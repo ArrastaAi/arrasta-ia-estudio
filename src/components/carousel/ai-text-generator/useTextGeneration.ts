@@ -1,7 +1,8 @@
 
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { useFirebaseTextGeneration } from '@/hooks/useFirebaseTextGeneration';
+import { generateAgentContent } from '@/firebase/functions/generateAgentContent';
+import { useFirebaseAPIKeyManager } from '@/hooks/useFirebaseAPIKeyManager';
 
 interface GenerateTextParams {
   prompt: string;
@@ -14,25 +15,44 @@ interface GenerateTextParams {
 export const useTextGeneration = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const { generateText } = useFirebaseTextGeneration();
+  const { getBestAvailableKey, incrementKeyUsage } = useFirebaseAPIKeyManager();
 
   const generateTextContent = async (params: GenerateTextParams): Promise<string | null> => {
     setLoading(true);
     try {
-      const result = await generateText({
+      const apiKey = getBestAvailableKey();
+      if (!apiKey) {
+        toast({
+          title: "Chave API necessária",
+          description: "Configure uma chave do Google Gemini nas configurações",
+          variant: "destructive"
+        });
+        return null;
+      }
+
+      const result = await generateAgentContent({
+        agent: "yuri",
         prompt: params.prompt,
-        targetAudience: params.targetAudience || "Público geral",
-        contentType: params.contentType || 'content',
-        slideIndex: params.slideIndex || 0,
-        carouselId: params.carouselId
+        topic: params.prompt,
+        audience: params.targetAudience || "Público geral",
+        goal: "educar",
+        apiKey,
+        slideCount: 1,
+        content: "",
+        format: {
+          slideCounts: 1,
+          wordLimits: [25]
+        },
+        maxSlidesAllowed: 1
       });
 
-      if (result) {
+      if (result.success && result.parsedTexts && result.parsedTexts.length > 0) {
+        await incrementKeyUsage(apiKey);
         toast({
           title: "Texto gerado com sucesso!",
           description: "O conteúdo foi gerado e pode ser editado conforme necessário."
         });
-        return result;
+        return result.parsedTexts[0].text;
       }
 
       throw new Error('Nenhum conteúdo foi gerado');

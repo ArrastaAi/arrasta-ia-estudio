@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Sparkles, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useFirebaseTextGeneration } from '@/hooks/useFirebaseTextGeneration';
+import { generateAgentContent } from '@/firebase/functions/generateAgentContent';
+import { useFirebaseAPIKeyManager } from '@/hooks/useFirebaseAPIKeyManager';
 
 interface StructuredContentGeneratorProps {
   onContentGenerated: (content: any) => void;
@@ -23,7 +24,7 @@ const StructuredContentGenerator: React.FC<StructuredContentGeneratorProps> = ({
   const [slideCount, setSlideCount] = useState(5);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const { generateStructuredContent } = useFirebaseTextGeneration();
+  const { getBestAvailableKey, incrementKeyUsage } = useFirebaseAPIKeyManager();
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
@@ -37,19 +38,41 @@ const StructuredContentGenerator: React.FC<StructuredContentGeneratorProps> = ({
 
     setLoading(true);
     try {
-      const result = await generateStructuredContent({
-        prompt: prompt.trim(),
-        targetAudience: targetAudience.trim() || "Público geral",
+      const apiKey = getBestAvailableKey();
+      if (!apiKey) {
+        toast({
+          title: "Chave API necessária",
+          description: "Configure uma chave do Google Gemini nas configurações",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const result = await generateAgentContent({
+        agent: "yuri",
+        topic: prompt.trim(),
+        audience: targetAudience.trim() || "Público geral",
+        goal: "educar",
+        apiKey,
         slideCount,
-        carouselId
+        content: "",
+        prompt: "",
+        format: {
+          slideCounts: slideCount,
+          wordLimits: Array(slideCount).fill(25)
+        },
+        maxSlidesAllowed: 9
       });
 
-      if (result) {
-        onContentGenerated(result);
+      if (result.success && result.parsedTexts) {
+        await incrementKeyUsage(apiKey);
+        onContentGenerated(result.parsedTexts);
         toast({
           title: "Conteúdo gerado com sucesso!",
           description: `${slideCount} slides foram criados com base no seu prompt.`
         });
+      } else {
+        throw new Error(result.error || "Erro ao gerar conteúdo");
       }
     } catch (error) {
       console.error('Erro ao gerar conteúdo:', error);

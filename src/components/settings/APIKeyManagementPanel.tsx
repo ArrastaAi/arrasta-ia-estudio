@@ -7,9 +7,9 @@ import { Label } from "@/components/ui/label";
 import { PlusCircle, Trash2, RefreshCw, AlertTriangle, ShieldAlert } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { useAPIKeyManager } from "@/hooks/useAPIKeyManager";
+import { useFirebaseAPIKeyManager } from "@/hooks/useFirebaseAPIKeyManager";
 import { Progress } from "@/components/ui/progress";
-import { APIKeyUsage } from "@/types/apiKeys.types";
+import { FirebaseAPIKey } from "@/types/firebase.types";
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useFirebaseAuth } from "@/contexts/FirebaseAuthContext";
@@ -20,7 +20,7 @@ interface APIKeyManagementPanelProps {
 
 const APIKeyManagementPanel: React.FC<APIKeyManagementPanelProps> = ({ className }) => {
   const { toast } = useToast();
-  const { apiKeys, loading, addAPIKey, loadAPIKeys, deleteAPIKey } = useAPIKeyManager();
+  const { apiKeys, loading, addAPIKey, loadAPIKeys, deleteAPIKey } = useFirebaseAPIKeyManager();
   const { user } = useFirebaseAuth();
   const isAdmin = user?.email === "admin@example.com"; // Replace with your admin check logic
   const [newKeyName, setNewKeyName] = useState<string>('');
@@ -214,7 +214,7 @@ const APIKeyManagementPanel: React.FC<APIKeyManagementPanelProps> = ({ className
             </div>
           ) : (
             <div className="space-y-3">
-              {apiKeys.map((key: APIKeyUsage) => (
+              {apiKeys.map((key: FirebaseAPIKey) => (
                 <div key={key.id} className="p-4 bg-gray-700 rounded-lg space-y-2">
                   <div className="flex justify-between items-center">
                     <div>
