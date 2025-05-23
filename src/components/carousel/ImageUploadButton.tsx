@@ -1,18 +1,20 @@
 
 import React from "react";
-import { Upload } from "lucide-react";
+import { Upload, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface ImageUploadButtonProps {
   onUpload: () => void;
   uploading: boolean;
   imageCount: number;
+  mlAnalysisEnabled?: boolean;
 }
 
 const ImageUploadButton: React.FC<ImageUploadButtonProps> = ({ 
   onUpload, 
   uploading, 
-  imageCount 
+  imageCount,
+  mlAnalysisEnabled = false
 }) => {
   return (
     <div className="flex justify-end mt-4">
@@ -24,12 +26,14 @@ const ImageUploadButton: React.FC<ImageUploadButtonProps> = ({
         {uploading ? (
           <>
             <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-            Carregando...
+            {mlAnalysisEnabled ? "Carregando e analisando..." : "Carregando..."}
           </>
         ) : (
           <>
             <Upload className="h-4 w-4 mr-2" />
+            {mlAnalysisEnabled && <Sparkles className="h-4 w-4 mr-1" />}
             Carregar {imageCount} {imageCount === 1 ? 'imagem' : 'imagens'}
+            {mlAnalysisEnabled && " com IA"}
           </>
         )}
       </Button>
