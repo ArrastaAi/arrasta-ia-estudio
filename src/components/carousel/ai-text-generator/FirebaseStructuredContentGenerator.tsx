@@ -1,196 +1,233 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
-import { generateAgentContent } from "@/firebase/functions/generateAgentContent";
-import { useFirebaseAPIKeyManager } from "@/hooks/useFirebaseAPIKeyManager";
 
-interface SlideWordCount {
-  slideIndex: number; // 1-based
-  wordCount: number;
-  fontFamily: string;
+import React, { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Card } from "@/components/ui/card";
+import { Loader2, Wand2, Type } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useFirebaseAPIKeyManager } from "@/hooks/useFirebaseAPIKeyManager";
+import { generateAgentContent } from "@/firebase/functions/generateAgentContent";
+
+interface GeneratedText {
+  id: number;
+  text: string;
 }
 
 interface FirebaseStructuredContentGeneratorProps {
-  carouselId: string;
-  slideCount: number;
-  onContentGenerated: (content: { id: number; text: string }[]) => void;
+  onApplyTexts: (texts: GeneratedText[]) => void;
 }
 
 const FirebaseStructuredContentGenerator: React.FC<FirebaseStructuredContentGeneratorProps> = ({
-  carouselId,
-  slideCount,
-  onContentGenerated
+  onApplyTexts
 }) => {
-  const [content, setContent] = useState("");
   const [loading, setLoading] = useState(false);
-  const [apiKeyMissing, setApiKeyMissing] = useState(false);
+  const [generatedTexts, setGeneratedTexts] = useState<GeneratedText[]>([]);
+  const [formData, setFormData] = useState({
+    topic: "",
+    audience: "",
+    goal: "educar",
+    slideCount: 5,
+    style: "profissional"
+  });
+
   const { toast } = useToast();
   const { getBestAvailableKey, incrementKeyUsage } = useFirebaseAPIKeyManager();
-  
-  // Definição das regras de contagem de palavras exatas conforme o prompt
-  const exactWordCounts: SlideWordCount[] = [
-    { slideIndex: 1, wordCount: 6, fontFamily: "Fixture" },
-    { slideIndex: 1, wordCount: 11, fontFamily: "Helvetica Now Display" },
-    { slideIndex: 2, wordCount: 22, fontFamily: "Helvetica Now Display" },
-    { slideIndex: 2, wordCount: 19, fontFamily: "Fixture" },
-    { slideIndex: 3, wordCount: 68, fontFamily: "Helvetica Now Display" },
-    { slideIndex: 3, wordCount: 11, fontFamily: "Fixture" },
-    { slideIndex: 4, wordCount: 36, fontFamily: "Helvetica Now Display" },
-    { slideIndex: 4, wordCount: 49, fontFamily: "Helvetica Now Display" },
-    { slideIndex: 5, wordCount: 15, fontFamily: "Fixture" },
-    { slideIndex: 5, wordCount: 41, fontFamily: "Helvetica Now Display" },
-    { slideIndex: 6, wordCount: 18, fontFamily: "Fixture" },
-    { slideIndex: 6, wordCount: 54, fontFamily: "Fixture" },
-    { slideIndex: 7, wordCount: 21, fontFamily: "Helvetica Now Display" },
-  ];
-  
-  // Verificar disponibilidade da API Key ao carregar
-  useEffect(() => {
-    checkApiKeyAvailability();
-  }, []);
-  
-  const checkApiKeyAvailability = async () => {
-    try {
-      const apiKey = getBestAvailableKey();
-      setApiKeyMissing(!apiKey);
-    } catch (err) {
-      console.error("Erro ao verificar chave API:", err);
-      setApiKeyMissing(true);
-    }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
-  
-  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setContent(e.target.value);
-  };
-  
-  const handleGenerateContent = async () => {
-    if (!content.trim()) {
-      toast({
-        title: "Conteúdo vazio",
-        description: "Por favor, forneça algum conteúdo para estruturar.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (apiKeyMissing) {
-      toast({
-        title: "Chave API Ausente",
-        description: "Configure uma chave API válida nas configurações antes de gerar conteúdo.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setLoading(true);
-    
+
+  const handleGenerate = async () => {
     try {
-      toast({
-        title: "Estruturando conteúdo",
-        description: "Aguarde enquanto o conteúdo está sendo estruturado...",
-      });
-      
-      // Limitar o número real de slides para 9
-      const actualSlideCount = Math.min(slideCount, 9);
-      
-      // Ajustar wordCountRules baseado no número de slides
-      const wordCountRules = exactWordCounts.filter(rule => 
-        rule.slideIndex <= actualSlideCount
-      );
-      
-      console.log("Gerando conteúdo estruturado com", actualSlideCount, "slides");
-      
-      // Obter a melhor chave disponível
+      setLoading(true);
+
+      // Validation
+      if (!formData.topic.trim()) {
+        toast({
+          title: "Campo obrigatório",
+          description: "Por favor, informe o tópico do carrossel",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Get API key
       const apiKey = getBestAvailableKey();
       if (!apiKey) {
-        throw new Error("Nenhuma chave API disponível");
+        toast({
+          title: "Chave API necessária",
+          description: "Configure uma chave do Google Gemini nas configurações",
+          variant: "destructive"
+        });
+        return;
       }
-      
-      // Chamar a função do Firebase
-      const data = await generateAgentContent({
-        agent: "promptCreator",
-        content,
+
+      toast({
+        title: "Gerando conteúdo",
+        description: "Aguarde enquanto criamos seu carrossel..."
+      });
+
+      // Call generation function
+      const result = await generateAgentContent({
+        agent: "yuri",
+        topic: formData.topic,
+        audience: formData.audience,
+        goal: formData.goal,
         apiKey,
-        slideCount: actualSlideCount,
+        slideCount: formData.slideCount,
         format: {
-          slideCounts: actualSlideCount,
-          wordLimits: wordCountRules.map(rule => rule.wordCount)
+          slideCounts: formData.slideCount,
+          wordLimits: Array(formData.slideCount).fill(25)
         },
         maxSlidesAllowed: 9
       });
-      
-      if (!data.success) {
-        throw new Error(data.error || "Falha na geração de conteúdo estruturado");
+
+      if (result.success && result.parsedTexts) {
+        // Increment API usage
+        await incrementKeyUsage(apiKey);
+        
+        setGeneratedTexts(result.parsedTexts);
+        toast({
+          title: "Conteúdo gerado!",
+          description: `${result.parsedTexts.length} slides criados com sucesso`
+        });
+      } else {
+        throw new Error(result.error || "Erro ao gerar conteúdo");
       }
-      
-      // Incrementar o uso da chave API
-      await incrementKeyUsage(apiKey);
-      
-      // Limitar para 9 slides se houver mais
-      const structuredContent = data.parsedTexts?.slice(0, 9) || [];
-      
-      console.log("Conteúdo estruturado gerado:", structuredContent);
-      onContentGenerated(structuredContent);
-      
-      toast({
-        title: "Conteúdo estruturado",
-        description: `${structuredContent.length} blocos de texto foram estruturados com sucesso.`,
-      });
-    } catch (err: any) {
-      console.error("Erro na geração de conteúdo estruturado:", err);
+
+    } catch (error: any) {
+      console.error("Erro na geração:", error);
       toast({
         title: "Erro",
-        description: err.message || "Ocorreu um erro ao estruturar o conteúdo",
-        variant: "destructive",
+        description: error.message || "Não foi possível gerar o conteúdo",
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
     }
   };
-  
+
+  const handleApply = () => {
+    if (generatedTexts.length === 0) {
+      toast({
+        title: "Nenhum conteúdo",
+        description: "Gere conteúdo primeiro antes de aplicar",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    onApplyTexts(generatedTexts);
+    toast({
+      title: "Conteúdo aplicado",
+      description: "Os textos foram aplicados aos slides"
+    });
+  };
+
   return (
     <div className="space-y-4">
-      <div>
-        <Label htmlFor="structured-content" className="text-white mb-2 block">Conteúdo para estruturar</Label>
-        <Textarea 
-          id="structured-content"
-          placeholder="Cole aqui o conteúdo que deseja transformar em um carrossel estruturado..." 
-          value={content}
-          onChange={handleContentChange}
-          className="bg-gray-700 border-gray-600 text-white h-40 resize-none"
-        />
-        <p className="text-xs text-gray-400 mt-1">
-          A IA estruturará seu texto em blocos com contagem de palavras específicas para carrosséis de alta conversão.
-        </p>
-      </div>
-      
-      {apiKeyMissing && (
-        <div className="text-amber-400 text-sm border border-amber-600 bg-amber-950/30 p-3 rounded-md">
-          ⚠️ Chave API não configurada. 
-          <Link to="/settings" className="ml-1 text-amber-300 hover:text-amber-200 underline">
-            Clique aqui para configurar uma chave de API válida.
-          </Link>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="topic">Tópico do Carrossel *</Label>
+          <Input
+            id="topic"
+            name="topic"
+            value={formData.topic}
+            onChange={handleInputChange}
+            placeholder="Ex: Como aumentar vendas online"
+            className="bg-gray-700 text-white"
+          />
         </div>
-      )}
-      
+
+        <div>
+          <Label htmlFor="audience">Público-alvo</Label>
+          <Input
+            id="audience"
+            name="audience"
+            value={formData.audience}
+            onChange={handleInputChange}
+            placeholder="Ex: Empreendedores digitais"
+            className="bg-gray-700 text-white"
+          />
+        </div>
+
+        <div>
+          <Label htmlFor="goal">Objetivo</Label>
+          <select
+            id="goal"
+            name="goal"
+            value={formData.goal}
+            onChange={handleInputChange}
+            className="w-full p-2 rounded bg-gray-700 text-white border border-gray-600"
+          >
+            <option value="educar">Educar</option>
+            <option value="vender">Vender</option>
+            <option value="engajar">Engajar</option>
+            <option value="inspirar">Inspirar</option>
+          </select>
+        </div>
+
+        <div>
+          <Label htmlFor="slideCount">Número de Slides</Label>
+          <Input
+            id="slideCount"
+            name="slideCount"
+            type="number"
+            min="3"
+            max="9"
+            value={formData.slideCount}
+            onChange={handleInputChange}
+            className="bg-gray-700 text-white"
+          />
+        </div>
+      </div>
+
       <Button
-        onClick={handleGenerateContent}
-        disabled={loading || apiKeyMissing}
-        className="w-full bg-purple-600 hover:bg-purple-700"
+        onClick={handleGenerate}
+        disabled={loading}
+        className="w-full bg-gradient-to-r from-purple-500 to-blue-500"
       >
         {loading ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Estruturando conteúdo...
+            Gerando conteúdo...
           </>
         ) : (
-          "Estruturar conteúdo"
+          <>
+            <Wand2 className="mr-2 h-4 w-4" />
+            Gerar Carrossel
+          </>
         )}
       </Button>
+
+      {generatedTexts.length > 0 && (
+        <Card className="p-4 bg-gray-700 border-gray-600">
+          <h3 className="text-lg font-medium text-white mb-3">Conteúdo Gerado</h3>
+          
+          <div className="space-y-2 mb-4">
+            {generatedTexts.map((text, index) => (
+              <div key={index} className="p-3 bg-gray-600 rounded-lg">
+                <div className="text-sm text-gray-300 mb-1">Slide {text.id}</div>
+                <div className="text-white">{text.text}</div>
+              </div>
+            ))}
+          </div>
+
+          <Button
+            onClick={handleApply}
+            className="w-full bg-green-600 hover:bg-green-700"
+          >
+            <Type className="mr-2 h-4 w-4" />
+            Aplicar aos Slides
+          </Button>
+        </Card>
+      )}
     </div>
   );
 };

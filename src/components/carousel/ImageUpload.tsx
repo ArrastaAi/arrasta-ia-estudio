@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { useFirebaseAuth } from "@/contexts/FirebaseAuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { useSupabaseStorage } from "@/hooks/useSupabaseStorage";
+import { useFirebaseStorage } from "@/hooks/useFirebaseStorage";
 import ImageUploadArea from "./ImageUploadArea";
 import ImagePreviewGrid from "./ImagePreviewGrid";
 import ImageUploadButton from "./ImageUploadButton";
@@ -18,15 +18,10 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ carouselId, onImagesUploaded 
   const { user } = useFirebaseAuth();
   const MAX_IMAGES = 20;
   
-  const { uploading, checkBucket, uploadImagesToSupabase } = useSupabaseStorage({
+  const { uploading, uploadImagesToFirebase } = useFirebaseStorage({
     userId: user?.uid,
     carouselId
   });
-  
-  // Check bucket on component mount
-  useEffect(() => {
-    checkBucket();
-  }, []);
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -39,8 +34,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ carouselId, onImagesUploaded 
       toast({
         title: "Limite de imagens",
         description: `Você pode carregar no máximo ${MAX_IMAGES} imagens. Selecionando apenas as primeiras.`,
-        variant: "warning",
-        context: "image-limit"
+        variant: "destructive"
       });
       // Select only the images that fit in the limit
       const availableSlots = MAX_IMAGES - previewImages.length;
@@ -79,13 +73,12 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ carouselId, onImagesUploaded 
       toast({
         title: "Erro",
         description: "Você precisa estar autenticado para fazer upload de imagens",
-        variant: "destructive",
-        context: "auth-required"
+        variant: "destructive"
       });
       return;
     }
     
-    const uploadedUrls = await uploadImagesToSupabase(previewImages);
+    const uploadedUrls = await uploadImagesToFirebase(previewImages);
     
     // Send URLs to parent component
     if (uploadedUrls.length > 0) {

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -32,6 +33,7 @@ const ImagesTab: React.FC<ImagesTabProps> = ({
   const [slideCount, setSlideCount] = useState<number>(5);
   const [backgroundColor, setBackgroundColor] = useState<string>("#000000");
   const [mlAnalysisEnabled, setMlAnalysisEnabled] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(false);
   const { toast } = useToast();
   const { user } = useFirebaseAuth();
 
@@ -246,6 +248,7 @@ const ImagesTab: React.FC<ImagesTabProps> = ({
               <Button 
                 onClick={handleApplySettings}
                 className="w-full bg-gradient-to-r from-purple-500 to-blue-500"
+                disabled={loading}
               >
                 <Layers className="mr-2 h-4 w-4" />
                 Aplicar Configurações
