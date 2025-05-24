@@ -3,7 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, FileEdit, ArrowRight, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Plus, FileEdit, ArrowRight, Trash2, Bug, Database, RefreshCw } from "lucide-react";
 import MainLayout from "@/components/layout/MainLayout";
 import { Carousel } from "@/types/database.types";
 import { useToast } from "@/hooks/use-toast";
@@ -17,66 +18,195 @@ const Dashboard = () => {
   const { toast } = useToast();
   const [carousels, setCarousels] = useState<Carousel[]>([]);
   const [loading, setLoading] = useState(true);
+  const [debugInfo, setDebugInfo] = useState<any>({});
 
-  useEffect(() => {
+  const fetchCarousels = async () => {
     if (!user) {
+      console.log('[Dashboard] Usuário não autenticado, redirecionando...');
       navigate("/auth");
       return;
     }
 
-    const fetchCarousels = async () => {
-      try {
-        setLoading(true);
+    try {
+      setLoading(true);
+      console.log('[Dashboard] Iniciando busca de carrosséis:', {
+        user_id: user.uid,
+        user_email: user.email,
+        timestamp: new Date().toISOString()
+      });
 
-        const carouselsCollectionRef = collection(db, "carousels");
-        const carouselsQuery = query(
-          carouselsCollectionRef,
-          where("user_id", "==", user.uid),
-          orderBy("created_at", "desc")
-        );
-        const carouselsSnapshot = await getDocs(carouselsQuery);
+      const carouselsCollectionRef = collection(db, "carousels");
+      const carouselsQuery = query(
+        carouselsCollectionRef,
+        where("user_id", "==", user.uid),
+        orderBy("created_at", "desc")
+      );
 
-        const carouselsList: Carousel[] = carouselsSnapshot.docs.map(doc => ({
+      console.log('[Dashboard] Executando query:', {
+        collection: 'carousels',
+        where: `user_id == ${user.uid}`,
+        orderBy: 'created_at desc'
+      });
+
+      const carouselsSnapshot = await getDocs(carouselsQuery);
+
+      console.log('[Dashboard] Resultado da query:', {
+        docs_count: carouselsSnapshot.docs.length,
+        empty: carouselsSnapshot.empty,
+        size: carouselsSnapshot.size
+      });
+
+      const carouselsList: Carousel[] = carouselsSnapshot.docs.map(doc => {
+        const data = doc.data();
+        console.log('[Dashboard] Processando documento:', {
           id: doc.id,
-          ...doc.data(),
-          layout_type: doc.data().layout_type || "instagram_rect", // Define um valor padrão
-        } as Carousel));
-
-        setCarousels(carouselsList);
-      } catch (error: any) {
-        toast({
-          title: "Erro ao carregar carrosséis",
-          description: error.message,
-          variant: "destructive",
+          title: data.title,
+          user_id: data.user_id,
+          layout_type: data.layout_type,
+          created_at: data.created_at
         });
-      } finally {
-        setLoading(false);
-      }
-    };
 
+        return {
+          id: doc.id,
+          ...data,
+          layout_type: data.layout_type || "instagram_rect",
+        } as Carousel;
+      });
+
+      console.log('[Dashboard] Carrosséis processados:', {
+        total: carouselsList.length,
+        published: carouselsList.filter(c => c.published).length,
+        drafts: carouselsList.filter(c => !c.published).length
+      });
+
+      setCarousels(carouselsList);
+      setDebugInfo({
+        user_id: user.uid,
+        total_carousels: carouselsList.length,
+        last_fetch: new Date().toISOString(),
+        query_success: true
+      });
+
+    } catch (error: any) {
+      console.error('[Dashboard] Erro detalhado ao carregar carrosséis:', {
+        error: error,
+        message: error?.message,
+        code: error?.code,
+        user_id: user.uid,
+        timestamp: new Date().toISOString()
+      });
+
+      setDebugInfo({
+        user_id: user.uid,
+        error: error?.message || 'Erro desconhecido',
+        last_fetch: new Date().toISOString(),
+        query_success: false
+      });
+
+      toast({
+        title: "Erro ao carregar carrosséis",
+        description: `Detalhes: ${error.message}`,
+        variant: "destructive",
+        autoShow: true
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchCarousels();
   }, [user, navigate, toast]);
 
   const handleDelete = async (id: string) => {
     try {
       setLoading(true);
+      console.log('[Dashboard] Iniciando exclusão do carrossel:', id);
+      
       const carouselDocRef = doc(db, "carousels", id);
       await deleteDoc(carouselDocRef);
 
+      console.log('[Dashboard] Carrossel excluído com sucesso:', id);
       setCarousels(carousels.filter((carousel) => carousel.id !== id));
+      
       toast({
         title: "Carrossel excluído com sucesso",
+        autoShow: true
       });
     } catch (error: any) {
+      console.error('[Dashboard] Erro ao excluir carrossel:', {
+        carousel_id: id,
+        error: error,
+        message: error?.message
+      });
+      
       toast({
         title: "Erro ao excluir carrossel",
         description: error.message,
         variant: "destructive",
+        autoShow: true
       });
     } finally {
       setLoading(false);
     }
   };
+
+  const renderDebugInfo = () => (
+    <Card className="bg-gray-800 border-gray-700 mb-6">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Database className="h-4 w-4 text-blue-400" />
+            <h3 className="text-white font-medium">Debug Info</h3>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={fetchCarousels}
+              className="text-gray-400 hover:text-white p-1"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => console.log('[DEBUG INFO]', debugInfo)}
+              className="text-gray-400 hover:text-white p-1"
+            >
+              <Bug className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <span className="text-gray-400">User ID:</span>
+            <p className="text-white font-mono text-xs">{debugInfo.user_id}</p>
+          </div>
+          <div>
+            <span className="text-gray-400">Total Carrosséis:</span>
+            <p className="text-white">{debugInfo.total_carousels || 0}</p>
+          </div>
+          <div>
+            <span className="text-gray-400">Última Busca:</span>
+            <p className="text-white text-xs">{debugInfo.last_fetch}</p>
+          </div>
+          <div>
+            <span className="text-gray-400">Status:</span>
+            <Badge variant={debugInfo.query_success ? "default" : "destructive"}>
+              {debugInfo.query_success ? "Sucesso" : "Erro"}
+            </Badge>
+          </div>
+          {debugInfo.error && (
+            <div className="col-span-2">
+              <span className="text-gray-400">Erro:</span>
+              <p className="text-red-400 text-xs">{debugInfo.error}</p>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
 
   return (
     <MainLayout>
@@ -99,11 +229,20 @@ const Dashboard = () => {
             </Button>
           </div>
 
+          {/* Debug Info */}
+          {debugInfo && Object.keys(debugInfo).length > 0 && renderDebugInfo()}
+
           <Tabs defaultValue="all" className="w-full">
             <TabsList className="mb-8">
-              <TabsTrigger value="all">Todos</TabsTrigger>
-              <TabsTrigger value="published">Publicados</TabsTrigger>
-              <TabsTrigger value="drafts">Rascunhos</TabsTrigger>
+              <TabsTrigger value="all">
+                Todos ({carousels.length})
+              </TabsTrigger>
+              <TabsTrigger value="published">
+                Publicados ({carousels.filter(c => c.published).length})
+              </TabsTrigger>
+              <TabsTrigger value="drafts">
+                Rascunhos ({carousels.filter(c => !c.published).length})
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="all">
@@ -126,7 +265,6 @@ const Dashboard = () => {
                     >
                       <CardHeader className="p-0">
                         <div className="h-48 bg-gray-700 relative">
-                          {/* Placeholder para a miniatura do carrossel */}
                           <div className="absolute inset-0 flex items-center justify-center text-gray-500">
                             {carousel.layout_type === "feed_square"
                               ? "Quadrado"
@@ -215,7 +353,6 @@ const Dashboard = () => {
                       >
                         <CardHeader className="p-0">
                           <div className="h-48 bg-gray-700 relative">
-                            {/* Placeholder para a miniatura do carrossel */}
                             <div className="absolute inset-0 flex items-center justify-center text-gray-500">
                               {carousel.layout_type}
                             </div>
@@ -283,7 +420,6 @@ const Dashboard = () => {
                       >
                         <CardHeader className="p-0">
                           <div className="h-48 bg-gray-700 relative">
-                            {/* Placeholder para a miniatura do carrossel */}
                             <div className="absolute inset-0 flex items-center justify-center text-gray-500">
                               {carousel.layout_type}
                             </div>

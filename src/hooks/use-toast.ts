@@ -7,15 +7,15 @@ import type {
 } from "@/components/ui/toast"
 
 const TOAST_LIMIT = 3
-const TOAST_REMOVE_DELAY = 5000 // Reduzido para 5 segundos
+const TOAST_REMOVE_DELAY = 5000
 
 type ToasterToast = ToastProps & {
   id: string
   title?: React.ReactNode
   description?: React.ReactNode
   action?: ToastActionElement
-  context?: string // Contexto para controlar notificações duplicadas
-  autoShow?: boolean // Controla se o toast deve ser mostrado automaticamente
+  context?: string
+  autoShow?: boolean
 }
 
 const actionTypes = {
@@ -57,7 +57,7 @@ interface State {
 }
 
 const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
-const activeContexts = new Set<string>() // Para rastrear contextos ativos
+const activeContexts = new Set<string>()
 
 const addToRemoveQueue = (toastId: string) => {
   if (toastTimeouts.has(toastId)) {
@@ -78,18 +78,15 @@ const addToRemoveQueue = (toastId: string) => {
 export const reducer = (state: State, action: Action): State => {
   switch (action.type) {
     case "ADD_TOAST": {
-      // Por padrão, não mostramos mais notificações automaticamente,
-      // a menos que autoShow seja explicitamente true
+      // Mudança aqui: por padrão autoShow é true, não false
       if (action.toast.autoShow === false) {
         return state;
       }
       
-      // Verifica se já existe uma notificação com o mesmo contexto
       if (action.toast.context && activeContexts.has(action.toast.context)) {
         return state
       }
       
-      // Adiciona o contexto à lista de ativos
       if (action.toast.context) {
         activeContexts.add(action.toast.context)
       }
@@ -111,7 +108,6 @@ export const reducer = (state: State, action: Action): State => {
     case "DISMISS_TOAST": {
       const { toastId } = action
 
-      // Removendo os contextos quando os toasts são dispensados
       state.toasts.forEach((toast) => {
         if ((toastId && toast.id === toastId) || toastId === undefined) {
           if (toast.context) {
@@ -142,7 +138,6 @@ export const reducer = (state: State, action: Action): State => {
     }
     case "REMOVE_TOAST": {
       if (action.toastId === undefined) {
-        // Limpar todos os contextos ativos ao remover todos os toasts
         activeContexts.clear()
         return {
           ...state,
@@ -150,7 +145,6 @@ export const reducer = (state: State, action: Action): State => {
         }
       }
       
-      // Encontrar e remover o contexto se o toast for removido
       const toastToRemove = state.toasts.find(t => t.id === action.toastId)
       if (toastToRemove?.context) {
         activeContexts.delete(toastToRemove.context)
@@ -187,9 +181,8 @@ function toast({ ...props }: Toast) {
     })
   const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id })
 
-  // Por padrão, autoShow é false para impedir notificações automáticas,
-  // deve ser explicitamente definido como true para mostrar
-  const autoShow = props.autoShow === true
+  // Mudança aqui: por padrão autoShow é true
+  const autoShow = props.autoShow !== false
   
   dispatch({
     type: "ADD_TOAST",
@@ -224,10 +217,8 @@ function useToast() {
     }
   }, [state])
 
-  // Função para verificar se um contexto está sendo exibido
   const isContextActive = (context: string) => activeContexts.has(context)
 
-  // Nova função para mostrar um toast sob demanda, útil quando autoShow=false
   const showToast = (id: string) => {
     const toast = memoryState.toasts.find(t => t.id === id)
     if (toast) {

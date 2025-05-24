@@ -4,7 +4,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MainLayout from "@/components/layout/MainLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Save, TextSelect, Image, LayoutTemplate, Palette, Share, FileText, Download, MessageCircle, Instagram, Facebook, Linkedin, Twitter } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, Save, TextSelect, Image, LayoutTemplate, Palette, Share, FileText, Download, MessageCircle, Instagram, Facebook, Linkedin, Twitter, Bug, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useFirebaseAuth } from "@/contexts/FirebaseAuthContext";
 import { Slide } from "@/types/database.types";
@@ -40,6 +41,7 @@ const Editor = () => {
   const [saving, setSaving] = useState(false);
   const [carouselData, setCarouselData] = useState<CarouselData | null>(null);
   const [activeTab, setActiveTab] = useState("images");
+  const [debugInfo, setDebugInfo] = useState<any>({});
 
   const [textStyles, setTextStyles] = useState<TextStyleOptions>({
     alignment: "center",
@@ -56,45 +58,110 @@ const Editor = () => {
 
   useEffect(() => {
     const fetchCarouselData = async () => {
-      if (!id || !user) return;
+      if (!id || !user) {
+        console.log('[Editor] Dados insuficientes:', { id, user: !!user });
+        return;
+      }
+      
       try {
         setLoading(true);
+        console.log('[Editor] Iniciando carregamento do carrossel:', {
+          carousel_id: id,
+          user_id: user.uid,
+          timestamp: new Date().toISOString()
+        });
 
         const carouselDocRef = doc(db, "carousels", id);
         const carouselDocSnap = await getDoc(carouselDocRef);
 
+        console.log('[Editor] Resultado da busca do carrossel:', {
+          exists: carouselDocSnap.exists(),
+          id: carouselDocSnap.id,
+          has_data: !!carouselDocSnap.data()
+        });
+
         if (!carouselDocSnap.exists()) {
+          console.log('[Editor] Carrossel não encontrado');
           toast({
             title: "Carrossel não encontrado",
             description: "Este carrossel não existe ou você não tem permissão para acessá-lo.",
-            variant: "destructive"
+            variant: "destructive",
+            autoShow: true
           });
           navigate("/dashboard");
           return;
         }
 
         const carouselData = carouselDocSnap.data() as CarouselData;
+        console.log('[Editor] Dados do carrossel carregados:', {
+          title: carouselData.title,
+          layout_type: carouselData.layout_type,
+          has_content: !!carouselData.content
+        });
 
         const slidesCollectionRef = collection(db, "carousels", id, "slides");
         const slidesQuery = query(slidesCollectionRef, orderBy("order_index", "asc"));
         const slidesQuerySnapshot = await getDocs(slidesQuery);
 
-        const slidesData: Slide[] = slidesQuerySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        } as Slide));
+        console.log('[Editor] Resultado da busca de slides:', {
+          slides_count: slidesQuerySnapshot.docs.length,
+          empty: slidesQuerySnapshot.empty
+        });
+
+        const slidesData: Slide[] = slidesQuerySnapshot.docs.map(doc => {
+          const slideData = doc.data();
+          console.log('[Editor] Slide carregado:', {
+            id: doc.id,
+            order_index: slideData.order_index,
+            has_content: !!slideData.content,
+            has_image: !!slideData.image_url
+          });
+          
+          return {
+            id: doc.id,
+            ...slideData
+          } as Slide;
+        });
 
         setCarouselData({
           id,
           ...carouselData,
           slides: slidesData
         });
+
+        setDebugInfo({
+          carousel_id: id,
+          slides_count: slidesData.length,
+          load_success: true,
+          loaded_at: new Date().toISOString()
+        });
+
+        console.log('[Editor] Carrossel carregado com sucesso:', {
+          slides_count: slidesData.length,
+          title: carouselData.title
+        });
+
       } catch (error: any) {
-        console.error("Erro ao buscar dados do carrossel:", error);
+        console.error("[Editor] Erro detalhado ao buscar dados do carrossel:", {
+          error: error,
+          message: error?.message,
+          code: error?.code,
+          carousel_id: id,
+          user_id: user.uid
+        });
+
+        setDebugInfo({
+          carousel_id: id,
+          error: error?.message || 'Erro desconhecido',
+          load_success: false,
+          loaded_at: new Date().toISOString()
+        });
+
         toast({
           title: "Erro",
-          description: error.message || "Ocorreu um erro ao buscar os dados do carrossel",
+          description: `Erro ao buscar carrossel: ${error.message || "Erro desconhecido"}`,
           variant: "destructive",
+          autoShow: true
         });
       } finally {
         setLoading(false);
@@ -105,45 +172,103 @@ const Editor = () => {
   }, [id, user, navigate, toast]);
 
   const handleSaveCarousel = async () => {
-    if (!carouselData || !user) return;
+    if (!carouselData || !user) {
+      console.log('[Editor] Dados insuficientes para salvar:', {
+        hasCarouselData: !!carouselData,
+        hasUser: !!user
+      });
+      return;
+    }
     
     try {
       setSaving(true);
+      console.log('[Editor] Iniciando salvamento do carrossel:', {
+        carousel_id: carouselData.id,
+        slides_count: carouselData.slides.length,
+        timestamp: new Date().toISOString()
+      });
       
       // Salvar carrossel principal
       const carouselRef = doc(db, "carousels", carouselData.id);
-      await updateDoc(carouselRef, {
+      const carouselUpdateData = {
         title: carouselData.title,
         description: carouselData.description,
         layout_type: carouselData.layout_type,
         narrative_style: carouselData.narrative_style,
         content: carouselData.content,
         updated_at: new Date().toISOString()
-      });
+      };
+
+      console.log('[Editor] Salvando dados do carrossel:', carouselUpdateData);
+      await updateDoc(carouselRef, carouselUpdateData);
 
       // Salvar slides
+      let slidesUpdated = 0;
       for (const slide of carouselData.slides) {
-        const slideRef = doc(db, "carousels", carouselData.id, "slides", slide.id);
-        await updateDoc(slideRef, {
-          content: slide.content,
-          image_url: slide.image_url,
-          background_type: slide.background_type,
-          background_value: slide.background_value,
-          effects: slide.effects,
-          updated_at: new Date().toISOString()
-        });
+        try {
+          const slideRef = doc(db, "carousels", carouselData.id, "slides", slide.id);
+          const slideUpdateData = {
+            content: slide.content,
+            image_url: slide.image_url,
+            background_type: slide.background_type,
+            background_value: slide.background_value,
+            effects: slide.effects,
+            updated_at: new Date().toISOString()
+          };
+
+          console.log('[Editor] Salvando slide:', {
+            slide_id: slide.id,
+            order_index: slide.order_index,
+            has_content: !!slide.content
+          });
+
+          await updateDoc(slideRef, slideUpdateData);
+          slidesUpdated++;
+        } catch (slideError) {
+          console.error('[Editor] Erro ao salvar slide:', {
+            slide_id: slide.id,
+            error: slideError
+          });
+        }
       }
+
+      console.log('[Editor] Salvamento concluído:', {
+        carousel_saved: true,
+        slides_updated: slidesUpdated,
+        total_slides: carouselData.slides.length
+      });
+
+      setDebugInfo(prev => ({
+        ...prev,
+        last_save: new Date().toISOString(),
+        save_success: true,
+        slides_saved: slidesUpdated
+      }));
 
       toast({
         title: "Carrossel salvo",
-        description: "Suas alterações foram salvas com sucesso.",
+        description: `Carrossel e ${slidesUpdated} slides salvos com sucesso.`,
+        autoShow: true
       });
     } catch (error) {
-      console.error("Erro ao salvar carrossel:", error);
+      console.error("[Editor] Erro ao salvar carrossel:", {
+        error: error,
+        message: error instanceof Error ? error.message : 'Erro desconhecido',
+        carousel_id: carouselData.id
+      });
+
+      setDebugInfo(prev => ({
+        ...prev,
+        last_save: new Date().toISOString(),
+        save_success: false,
+        save_error: error instanceof Error ? error.message : 'Erro desconhecido'
+      }));
+      
       toast({
         title: "Erro ao salvar",
-        description: "Não foi possível salvar o carrossel.",
+        description: `Não foi possível salvar o carrossel: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
         variant: "destructive",
+        autoShow: true
       });
     } finally {
       setSaving(false);
@@ -517,7 +642,7 @@ const Editor = () => {
             description: "A imagem foi salva. Você pode carregá-la manualmente no Instagram.",
             variant: "default"
           });
-        }
+      }
       toast({
         title: "Compartilhamento iniciado",
         description: `O processo de compartilhamento para ${platform} foi iniciado.`
@@ -530,16 +655,6 @@ const Editor = () => {
         variant: "destructive"
       });
     }
-  };
-
-  // Helper function to update all slides in Supabase
-  const updateSlidesInSupabase = async () => {
-    // TODO: Implementar a lógica para atualizar todos os slides no Firestore
-  };
-
-  // Helper function to update a single slide in Supabase
-  const updateSingleSlideInSupabase = async (index: number, data: Partial<Slide>) => {
-    // TODO: Implementar a lógica para atualizar um único slide no Firestore
   };
 
   if (loading) {
@@ -573,14 +688,40 @@ const Editor = () => {
                 <ArrowLeft className="h-5 w-5" />
               </Button>
               <div>
-                <h1 className="text-2xl font-bold text-white">
-                  {carouselData.title || "Carrossel sem título"}
-                </h1>
-                <p className="text-gray-400 text-sm">
-                  {carouselData.layout_type === "feed_square" ? "Instagram/LinkedIn (Quadrado)" : 
-                   carouselData.layout_type === "stories" ? "Instagram/TikTok (Stories)" : 
-                   carouselData.layout_type === "pinterest" ? "Pinterest" : "Facebook"}
-                </p>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl font-bold text-white">
+                    {carouselData.title || "Carrossel sem título"}
+                  </h1>
+                  {debugInfo && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => console.log('[DEBUG INFO]', debugInfo)}
+                      className="p-1 text-gray-400 hover:text-white"
+                      title="Ver informações de debug no console"
+                    >
+                      <Bug className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <p className="text-gray-400 text-sm">
+                    {carouselData.layout_type === "feed_square" ? "Instagram/LinkedIn (Quadrado)" : 
+                     carouselData.layout_type === "stories" ? "Instagram/TikTok (Stories)" : 
+                     carouselData.layout_type === "pinterest" ? "Pinterest" : "Facebook"}
+                  </p>
+                  {debugInfo.slides_count !== undefined && (
+                    <Badge variant="secondary" className="text-xs">
+                      {debugInfo.slides_count} slides
+                    </Badge>
+                  )}
+                  {debugInfo.save_success === false && (
+                    <Badge variant="destructive" className="text-xs">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      Erro ao salvar
+                    </Badge>
+                  )}
+                </div>
               </div>
             </div>
             <div className="flex space-x-3">
@@ -599,7 +740,44 @@ const Editor = () => {
             </div>
           </div>
 
-          {/* Tabs do Editor */}
+          {/* Debug Info */}
+          {debugInfo && Object.keys(debugInfo).length > 0 && (
+            <Card className="bg-gray-800 border-gray-700 mb-6">
+              <div className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Bug className="h-4 w-4 text-blue-400" />
+                  <span className="text-white font-medium">Debug Status</span>
+                </div>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-400">Carregamento:</span>
+                    <Badge variant={debugInfo.load_success ? "default" : "destructive"} className="ml-2">
+                      {debugInfo.load_success ? "Sucesso" : "Erro"}
+                    </Badge>
+                  </div>
+                  <div>
+                    <span className="text-gray-400">Slides:</span>
+                    <span className="text-white ml-2">{debugInfo.slides_count || 0}</span>
+                  </div>
+                  {debugInfo.last_save && (
+                    <div>
+                      <span className="text-gray-400">Último Save:</span>
+                      <Badge variant={debugInfo.save_success ? "default" : "destructive"} className="ml-2">
+                        {debugInfo.save_success ? "OK" : "Erro"}
+                      </Badge>
+                    </div>
+                  )}
+                  {debugInfo.error && (
+                    <div className="col-span-2 lg:col-span-1">
+                      <span className="text-gray-400">Erro:</span>
+                      <p className="text-red-400 text-xs">{debugInfo.error}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </Card>
+          )}
+
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <div className="bg-gray-800 rounded-lg p-1 mb-6">
               <TabsList className="grid grid-cols-5 bg-transparent py-[3px] mx-0 px-0">
