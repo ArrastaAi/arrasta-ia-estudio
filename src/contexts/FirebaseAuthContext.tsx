@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import {
   getAuth,
@@ -15,7 +16,10 @@ interface AuthContextProps {
   loading: boolean;
   isAdmin: boolean;
   login: (email: string, password: string) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, username?: string) => Promise<void>;
   logout: () => Promise<void>;
+  signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
 }
 
@@ -81,6 +85,32 @@ export const FirebaseAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
+  const signIn = async (email: string, password: string) => {
+    await login(email, password);
+  };
+
+  const signUp = async (email: string, password: string, username?: string) => {
+    try {
+      setLoading(true);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      
+      // Criar perfil do usuário no Firestore
+      const { createUserProfile } = await import("@/services/firebaseUserService");
+      await createUserProfile({
+        uid: userCredential.user.uid,
+        email: email,
+        displayName: username || '',
+        photoURL: ''
+      });
+      
+    } catch (error: any) {
+      console.error("Signup failed:", error.message);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const logout = async () => {
     try {
       setLoading(true);
@@ -91,6 +121,10 @@ export const FirebaseAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
     } finally {
       setLoading(false);
     }
+  };
+
+  const signOutFunc = async () => {
+    await logout();
   };
 
   const resetPassword = async (email: string) => {
@@ -110,7 +144,10 @@ export const FirebaseAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
     loading,
     isAdmin,
     login,
+    signIn,
+    signUp,
     logout,
+    signOut: signOutFunc,
     resetPassword
   };
 
