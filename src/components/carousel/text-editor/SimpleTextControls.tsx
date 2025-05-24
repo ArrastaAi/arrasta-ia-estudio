@@ -28,6 +28,7 @@ const SimpleTextControls: React.FC<SimpleTextControlsProps> = ({
   const colors = Object.values(INSTAGRAM_COLORS);
 
   const handleFontChange = (fontKey: string) => {
+    console.log('Mudando fonte nos controles para:', fontKey);
     onStyleChange({ ...styles, fontFamily: fontKey });
   };
 

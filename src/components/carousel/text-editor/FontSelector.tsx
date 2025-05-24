@@ -72,7 +72,7 @@ const FontSelector: React.FC<FontSelectorProps> = ({
     );
   }
 
-  // Versão completa para o painel lateral
+  // Versão completa para o painel lateral com fundo escuro
   return (
     <div className="grid grid-cols-2 gap-3">
       {FONT_OPTIONS.map(font => (
@@ -80,14 +80,14 @@ const FontSelector: React.FC<FontSelectorProps> = ({
           key={font.key}
           variant={selectedFont === font.key ? "default" : "outline"}
           onClick={() => onFontChange(font.key)}
-          className={`h-12 flex flex-col items-center justify-center ${
+          className={`h-12 flex flex-col items-center justify-center bg-gray-800 hover:bg-gray-700 border-2 ${
             selectedFont === font.key 
               ? 'border-purple-500 bg-purple-600 text-white' 
               : 'border-gray-600 hover:border-purple-400 text-white'
           }`}
         >
-          <span className={`text-lg ${font.name}`}>{font.previewText}</span>
-          <span className="text-xs">{font.displayName}</span>
+          <span className={`text-lg text-white ${font.name}`}>{font.previewText}</span>
+          <span className="text-xs text-gray-300">{font.displayName}</span>
         </Button>
       ))}
     </div>

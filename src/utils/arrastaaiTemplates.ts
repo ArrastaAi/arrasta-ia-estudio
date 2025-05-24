@@ -1,5 +1,5 @@
 
-import { ArrastaAiTemplate, ARRASTAAI_COLORS } from "@/types/carousel.types";
+import { ArrastaAiTemplate, INSTAGRAM_COLORS } from "@/types/carousel.types";
 
 export const ARRASTAAI_TEMPLATES: Record<string, ArrastaAiTemplate> = {
   impact: {
@@ -8,19 +8,19 @@ export const ARRASTAAI_TEMPLATES: Record<string, ArrastaAiTemplate> = {
     description: "Título grande com overlay para máximo impacto",
     preview: "💥",
     colors: {
-      primary: ARRASTAAI_COLORS.purple,
-      secondary: ARRASTAAI_COLORS.white,
-      background: ARRASTAAI_COLORS.black,
-      text: ARRASTAAI_COLORS.white
+      primary: INSTAGRAM_COLORS.purple,
+      secondary: INSTAGRAM_COLORS.white,
+      background: INSTAGRAM_COLORS.black,
+      text: INSTAGRAM_COLORS.white
     },
     textStyle: {
       textSize: "large",
       textPosition: "center",
       textStyle: "impact",
-      textColor: ARRASTAAI_COLORS.white,
+      textColor: INSTAGRAM_COLORS.white,
       fontFamily: "bebas",
       hasBackground: true,
-      backgroundColor: ARRASTAAI_COLORS.black,
+      backgroundColor: INSTAGRAM_COLORS.black,
       backgroundOpacity: 60,
       textCase: "uppercase",
       fontWeight: "bold"
@@ -33,16 +33,16 @@ export const ARRASTAAI_TEMPLATES: Record<string, ArrastaAiTemplate> = {
     description: "Texto limpo e sofisticado",
     preview: "✨",
     colors: {
-      primary: ARRASTAAI_COLORS.darkGray,
-      secondary: ARRASTAAI_COLORS.purple,
-      background: ARRASTAAI_COLORS.white,
-      text: ARRASTAAI_COLORS.darkGray
+      primary: INSTAGRAM_COLORS.gray,
+      secondary: INSTAGRAM_COLORS.purple,
+      background: INSTAGRAM_COLORS.white,
+      text: INSTAGRAM_COLORS.gray
     },
     textStyle: {
       textSize: "medium",
       textPosition: "center",
       textStyle: "elegant",
-      textColor: ARRASTAAI_COLORS.darkGray,
+      textColor: INSTAGRAM_COLORS.gray,
       fontFamily: "helvetica",
       hasBackground: false,
       textCase: "none",
@@ -56,19 +56,19 @@ export const ARRASTAAI_TEMPLATES: Record<string, ArrastaAiTemplate> = {
     description: "Botão roxo ArrastaAí em destaque",
     preview: "🚀",
     colors: {
-      primary: ARRASTAAI_COLORS.purple,
-      secondary: ARRASTAAI_COLORS.white,
-      background: ARRASTAAI_COLORS.purple,
-      text: ARRASTAAI_COLORS.white
+      primary: INSTAGRAM_COLORS.purple,
+      secondary: INSTAGRAM_COLORS.white,
+      background: INSTAGRAM_COLORS.purple,
+      text: INSTAGRAM_COLORS.white
     },
     textStyle: {
       textSize: "medium",
       textPosition: "bottom",
       textStyle: "cta",
-      textColor: ARRASTAAI_COLORS.white,
+      textColor: INSTAGRAM_COLORS.white,
       fontFamily: "bebas",
       hasBackground: true,
-      backgroundColor: ARRASTAAI_COLORS.purple,
+      backgroundColor: INSTAGRAM_COLORS.purple,
       backgroundOpacity: 100,
       textCase: "uppercase",
       fontWeight: "bold"
@@ -81,16 +81,16 @@ export const ARRASTAAI_TEMPLATES: Record<string, ArrastaAiTemplate> = {
     description: "Texto direto sobre a imagem",
     preview: "📝",
     colors: {
-      primary: ARRASTAAI_COLORS.white,
-      secondary: ARRASTAAI_COLORS.lightGray,
+      primary: INSTAGRAM_COLORS.white,
+      secondary: INSTAGRAM_COLORS.gray,
       background: "transparent",
-      text: ARRASTAAI_COLORS.white
+      text: INSTAGRAM_COLORS.white
     },
     textStyle: {
       textSize: "medium",
       textPosition: "center",
       textStyle: "minimal",
-      textColor: ARRASTAAI_COLORS.white,
+      textColor: INSTAGRAM_COLORS.white,
       fontFamily: "helvetica",
       hasBackground: false,
       textCase: "none",
@@ -104,19 +104,19 @@ export const ARRASTAAI_TEMPLATES: Record<string, ArrastaAiTemplate> = {
     description: "Estilo artístico com fontes manuscritas",
     preview: "🎨",
     colors: {
-      primary: ARRASTAAI_COLORS.black,
-      secondary: ARRASTAAI_COLORS.purple,
-      background: ARRASTAAI_COLORS.black,
-      text: ARRASTAAI_COLORS.white
+      primary: INSTAGRAM_COLORS.black,
+      secondary: INSTAGRAM_COLORS.purple,
+      background: INSTAGRAM_COLORS.black,
+      text: INSTAGRAM_COLORS.white
     },
     textStyle: {
       textSize: "large",
       textPosition: "center",
       textStyle: "hyeser",
-      textColor: ARRASTAAI_COLORS.white,
+      textColor: INSTAGRAM_COLORS.white,
       fontFamily: "brusher",
       hasBackground: true,
-      backgroundColor: ARRASTAAI_COLORS.black,
+      backgroundColor: INSTAGRAM_COLORS.black,
       backgroundOpacity: 80,
       textCase: "uppercase",
       fontWeight: "bold"

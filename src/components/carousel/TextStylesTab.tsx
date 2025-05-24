@@ -1,7 +1,6 @@
 
 import React from 'react';
 import { Label } from "@/components/ui/label";
-import { Card } from "@/components/ui/card";
 import { Type, Palette } from "lucide-react";
 import { TextStyleOptions, INSTAGRAM_COLORS } from "@/types/carousel.types";
 import FontSelector from "./text-editor/FontSelector";
@@ -19,11 +18,14 @@ const TextStylesTab: React.FC<TextStylesTabProps> = ({
   const { toast } = useToast();
 
   const handleFontChange = (fontKey: string) => {
+    console.log('Alterando fonte para:', fontKey);
     if (onUpdateTextStyles && textStyles) {
-      onUpdateTextStyles({ 
+      const newStyles = { 
         ...textStyles, 
         fontFamily: fontKey as any
-      });
+      };
+      console.log('Novos estilos:', newStyles);
+      onUpdateTextStyles(newStyles);
       toast({
         title: "Fonte alterada",
         description: `Fonte ${fontKey} aplicada com sucesso.`
@@ -32,11 +34,14 @@ const TextStylesTab: React.FC<TextStylesTabProps> = ({
   };
 
   const handleColorChange = (color: string) => {
+    console.log('Alterando cor para:', color);
     if (onUpdateTextStyles && textStyles) {
-      onUpdateTextStyles({ 
+      const newStyles = { 
         ...textStyles, 
         textColor: color 
-      });
+      };
+      console.log('Novos estilos:', newStyles);
+      onUpdateTextStyles(newStyles);
       toast({
         title: "Cor alterada",
         description: "Nova cor aplicada com sucesso."
@@ -84,22 +89,6 @@ const TextStylesTab: React.FC<TextStylesTabProps> = ({
           ))}
         </div>
       </div>
-
-      {/* Dicas de Uso */}
-      <Card className="p-4 bg-gray-800/50 border-gray-700">
-        <div className="text-center space-y-2">
-          <h3 className="text-white font-medium flex items-center justify-center gap-2">
-            <Type className="h-4 w-4" />
-            Dicas de Edição
-          </h3>
-          <div className="text-sm text-gray-300 space-y-1">
-            <p>• Clique no texto para editar</p>
-            <p>• Arraste para mover o texto</p>
-            <p>• Use Enter para nova linha</p>
-            <p>• ESC para cancelar edição</p>
-          </div>
-        </div>
-      </Card>
     </div>
   );
 };
