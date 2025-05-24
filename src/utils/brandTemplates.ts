@@ -1,5 +1,5 @@
 
-import { BrandTemplate, TextHierarchyStyle } from "@/types/carousel.types";
+import { TextHierarchyStyle } from "@/types/carousel.types";
 
 export const PREDIAL_CASA_NOVA_COLORS = {
   orange: "#FF6B35",
@@ -11,7 +11,29 @@ export const PREDIAL_CASA_NOVA_COLORS = {
   overlay: "rgba(0, 0, 0, 0.6)"
 };
 
-export const BRAND_TEMPLATES: Record<string, BrandTemplate> = {
+// Interface local para templates de marca (removendo dependência externa)
+interface LocalBrandTemplate {
+  id: string;
+  name: string;
+  description: string;
+  primaryColor: string;
+  secondaryColor: string;
+  backgroundColor: string;
+  textColor: string;
+  accentColor: string;
+  fontWeights: {
+    primary: string;
+    secondary: string;
+    cta: string;
+  };
+  spacing: {
+    tight: number;
+    normal: number;
+    wide: number;
+  };
+}
+
+export const BRAND_TEMPLATES: Record<string, LocalBrandTemplate> = {
   predial_casa_nova: {
     id: "predial_casa_nova",
     name: "Predial Casa Nova",
@@ -22,9 +44,9 @@ export const BRAND_TEMPLATES: Record<string, BrandTemplate> = {
     textColor: PREDIAL_CASA_NOVA_COLORS.white,
     accentColor: PREDIAL_CASA_NOVA_COLORS.darkOrange,
     fontWeights: {
-      primary: "800", // Extra bold para títulos
-      secondary: "400", // Regular para texto
-      cta: "700" // Bold para CTAs
+      primary: "800",
+      secondary: "400",
+      cta: "700"
     },
     spacing: {
       tight: 0.5,
@@ -94,7 +116,7 @@ export const BRAND_TEMPLATES: Record<string, BrandTemplate> = {
   }
 };
 
-export const getTextHierarchyStyles = (template: BrandTemplate, hierarchy: string): TextHierarchyStyle => {
+export const getTextHierarchyStyles = (template: LocalBrandTemplate, hierarchy: string): TextHierarchyStyle => {
   const baseStyles = {
     primary: {
       fontWeight: template.fontWeights.primary,
@@ -108,7 +130,7 @@ export const getTextHierarchyStyles = (template: BrandTemplate, hierarchy: strin
       fontWeight: template.fontWeights.secondary,
       fontSize: 16,
       textColor: template.secondaryColor,
-      textCase: "normal" as const,
+      textCase: "none" as const,
       letterSpacing: template.spacing.normal,
       marginBottom: 8
     },
@@ -124,7 +146,7 @@ export const getTextHierarchyStyles = (template: BrandTemplate, hierarchy: strin
       fontWeight: template.fontWeights.primary,
       fontSize: 20,
       textColor: template.primaryColor,
-      textCase: "normal" as const,
+      textCase: "none" as const,
       letterSpacing: template.spacing.normal,
       marginBottom: 8
     }
@@ -135,35 +157,34 @@ export const getTextHierarchyStyles = (template: BrandTemplate, hierarchy: strin
 
 export const getIntelligentTextPosition = (
   imageAnalysis: { hasDarkAreas: boolean; hasBrightAreas: boolean; aspectRatio: string | null },
-  template: BrandTemplate
+  template: LocalBrandTemplate
 ): "top" | "center" | "bottom" => {
-  // Lógica baseada nos mockups da Predial Casa Nova
   if (template.id === "predial_casa_nova") {
     if (imageAnalysis.hasDarkAreas && !imageAnalysis.hasBrightAreas) {
-      return "center"; // Imagem escura, texto no centro
+      return "center";
     }
     if (imageAnalysis.hasBrightAreas && !imageAnalysis.hasDarkAreas) {
-      return "bottom"; // Imagem clara, texto na parte inferior com overlay
+      return "bottom";
     }
-    return "top"; // Imagem mista, texto no topo
+    return "top";
   }
   
-  return "center"; // Padrão
+  return "center";
 };
 
 export const getIntelligentOverlayIntensity = (
   imageAnalysis: { hasDarkAreas: boolean; hasBrightAreas: boolean },
-  template: BrandTemplate
+  template: LocalBrandTemplate
 ): number => {
   if (template.id === "overlay_text") {
     if (imageAnalysis.hasBrightAreas && imageAnalysis.hasDarkAreas) {
-      return 70; // Imagem com contraste, overlay mais forte
+      return 70;
     }
     if (imageAnalysis.hasBrightAreas) {
-      return 50; // Imagem clara, overlay médio
+      return 50;
     }
-    return 30; // Imagem escura, overlay leve
+    return 30;
   }
   
-  return 0; // Sem overlay por padrão
+  return 0;
 };
