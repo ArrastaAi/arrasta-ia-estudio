@@ -1,10 +1,14 @@
-
 import React, { useState, useEffect } from 'react';
 import { Slide } from "@/types/database.types";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import FirebaseAITextGenerator from "@/components/carousel/FirebaseAITextGenerator";
+import AITextGenerator from "@/components/carousel/AITextGenerator";
 import { useToast } from '@/hooks/use-toast';
+import { Button } from "@/components/ui/button";
+import { Settings2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import APIKeyManagementPanel from "@/components/settings/APIKeyManagementPanel";
+import { useFirebaseAuth } from "@/contexts/FirebaseAuthContext";
 
 interface ContentTabProps {
   carouselId: string;
@@ -20,7 +24,10 @@ const ContentTab: React.FC<ContentTabProps> = ({
   onUpdateSlideContent 
 }) => {
   const [showManualEditor, setShowManualEditor] = useState(false);
+  const [showApiKeySettings, setShowApiKeySettings] = useState(false);
   const { toast } = useToast();
+  const { user } = useFirebaseAuth();
+  const isAdmin = user?.email === "admin@example.com"; // Replace with your admin check logic
   
   const handleApplyCreativeTexts = (texts: { id: number; text: string }[]) => {
     // Limitar o número de slides para 9
@@ -30,21 +37,39 @@ const ContentTab: React.FC<ContentTabProps> = ({
       toast({
         title: "Limite de slides",
         description: `O número máximo de slides foi limitado a 9. Alguns slides gerados foram removidos.`,
-        variant: "default"
+        variant: "info",
+        autoShow: true
       });
     }
     
     onApplyGeneratedTexts(limitedTexts);
     setShowManualEditor(true);
   };
+
+  // Abrir painel de configuração de chaves API
+  const openApiKeySettings = () => {
+    setShowApiKeySettings(true);
+  };
   
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center mb-2">
         <h3 className="text-lg font-medium text-white">Geração de Conteúdo</h3>
+        {isAdmin && (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={openApiKeySettings} 
+            className="flex items-center gap-1"
+          >
+            <Settings2 className="h-4 w-4" /> 
+            <span className="hidden sm:inline">Gerenciar API Keys</span>
+            <span className="inline sm:hidden">API Keys</span>
+          </Button>
+        )}
       </div>
       
-      <FirebaseAITextGenerator carouselId={carouselId} onApplyTexts={handleApplyCreativeTexts} />
+      <AITextGenerator carouselId={carouselId} onApplyTexts={handleApplyCreativeTexts} />
       
       {showManualEditor && (
         <>
@@ -70,6 +95,17 @@ const ContentTab: React.FC<ContentTabProps> = ({
           </div>
         </>
       )}
+
+      {/* Modal de configuração de chaves API */}
+      <Dialog open={showApiKeySettings} onOpenChange={setShowApiKeySettings}>
+        <DialogContent className="max-w-3xl bg-gray-900 border-gray-700">
+          <DialogHeader>
+            <DialogTitle className="text-white">Gerenciamento de Chaves de API</DialogTitle>
+          </DialogHeader>
+          
+          <APIKeyManagementPanel className="mt-4" />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

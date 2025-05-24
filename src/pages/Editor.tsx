@@ -9,12 +9,13 @@ import { useToast } from "@/hooks/use-toast";
 import { useFirebaseAuth } from "@/contexts/FirebaseAuthContext";
 import { Slide } from "@/types/database.types";
 import { db, firestore } from "@/integrations/firebase/client";
-import { doc, getDoc, collection, query, where, getDocs, orderBy, setDoc, updateDoc, addDoc } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, getDocs, orderBy, setDoc } from "firebase/firestore";
 import CarouselPreview from "@/components/carousel/CarouselPreview";
 import ContentTab from "@/components/carousel/ContentTab";
 import ImagesTab from "@/components/carousel/ImagesTab";
 import LayoutTab from "@/components/carousel/LayoutTab";
 import TextStylesTab from "@/components/carousel/TextStylesTab";
+import StylesTabContainer from "@/components/carousel/StylesTabContainer";
 import { TextStyleOptions } from "@/types/carousel.types";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
@@ -113,371 +114,34 @@ const Editor = () => {
   }, [id, user, navigate, toast]);
 
   const handleSaveCarousel = async () => {
-    if (!id || !user || !carouselData) return;
-    
-    try {
-      setSaving(true);
-      
-      // Salvar carrossel principal
-      const carouselRef = doc(firestore, "carousels", id);
-      await updateDoc(carouselRef, {
-        title: carouselData.title,
-        layout_type: carouselData.layout_type,
-        updated_at: new Date().toISOString()
-      });
-      
-      toast({
-        title: "Carrossel salvo",
-        description: "Suas alterações foram salvas com sucesso!",
-      });
-    } catch (error) {
-      console.error("Erro ao salvar carrossel:", error);
-      toast({
-        title: "Erro ao salvar",
-        description: "Não foi possível salvar o carrossel. Tente novamente.",
-        variant: "destructive"
-      });
-    } finally {
-      setSaving(false);
-    }
+    // TODO: Implementar a lógica para salvar o carrossel no Firestore
   };
-
-  const handleUpdateSlideContent = async (index: number, content: string) => {
-    if (!carouselData || !carouselData.slides[index]) return;
-    
-    try {
-      const slide = carouselData.slides[index];
-      const slideRef = doc(firestore, "carousels", id!, "slides", slide.id);
-      
-      await updateDoc(slideRef, {
-        content: content,
-        updated_at: new Date().toISOString()
-      });
-      
-      // Atualizar estado local
-      const updatedSlides = [...carouselData.slides];
-      updatedSlides[index] = { ...updatedSlides[index], content };
-      
-      setCarouselData({
-        ...carouselData,
-        slides: updatedSlides
-      });
-      
-    } catch (error) {
-      console.error("Erro ao atualizar slide:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível atualizar o conteúdo do slide.",
-        variant: "destructive"
-      });
-    }
+  const handleUpdateSlideContent = (index: number, content: string) => {
+    // TODO: Implementar a lógica para atualizar o conteúdo do slide no Firestore
   };
-
-  const handleApplyGeneratedTexts = async (texts: { id: number; text: string }[]) => {
-    if (!carouselData || !id) return;
-    
-    try {
-      // Primeiro, criar/atualizar slides conforme necessário
-      const slidesCollectionRef = collection(firestore, "carousels", id, "slides");
-      const slidesQuery = query(slidesCollectionRef, orderBy("order_index", "asc"));
-      const existingSlides = await getDocs(slidesQuery);
-      
-      const updatedSlides: Slide[] = [];
-      
-      for (let i = 0; i < texts.length; i++) {
-        const text = texts[i];
-        let slideData: Slide;
-        
-        if (i < existingSlides.docs.length) {
-          // Atualizar slide existente
-          const slideDoc = existingSlides.docs[i];
-          const slideRef = doc(firestore, "carousels", id, "slides", slideDoc.id);
-          
-          await updateDoc(slideRef, {
-            content: text.text,
-            order_index: i,
-            updated_at: new Date().toISOString()
-          });
-          
-          slideData = {
-            id: slideDoc.id,
-            ...slideDoc.data(),
-            content: text.text,
-            order_index: i
-          } as Slide;
-        } else {
-          // Criar novo slide
-          const newSlideRef = await addDoc(slidesCollectionRef, {
-            content: text.text,
-            order_index: i,
-            image_url: null,
-            background_type: "color",
-            background_value: "#000000",
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          });
-          
-          slideData = {
-            id: newSlideRef.id,
-            content: text.text,
-            order_index: i,
-            image_url: null,
-            background_type: "color",
-            background_value: "#000000"
-          } as Slide;
-        }
-        
-        updatedSlides.push(slideData);
-      }
-      
-      setCarouselData({
-        ...carouselData,
-        slides: updatedSlides
-      });
-      
-      toast({
-        title: "Textos aplicados",
-        description: `${texts.length} slides foram atualizados com sucesso!`,
-      });
-      
-    } catch (error) {
-      console.error("Erro ao aplicar textos:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível aplicar os textos aos slides.",
-        variant: "destructive"
-      });
-    }
+  const handleApplyGeneratedTexts = (texts: {
+    id: number;
+    text: string;
+  }[]) => {
+    // TODO: Implementar a lógica para aplicar os textos gerados aos slides no Firestore
   };
-
-  const handleImagesUploaded = async (imageUrls: string[]) => {
-    if (!carouselData || !id) return;
-    
-    try {
-      const slidesCollectionRef = collection(firestore, "carousels", id, "slides");
-      const slidesQuery = query(slidesCollectionRef, orderBy("order_index", "asc"));
-      const existingSlides = await getDocs(slidesQuery);
-      
-      // Aplicar imagens aos slides existentes
-      for (let i = 0; i < Math.min(imageUrls.length, existingSlides.docs.length); i++) {
-        const slideDoc = existingSlides.docs[i];
-        const slideRef = doc(firestore, "carousels", id, "slides", slideDoc.id);
-        
-        await updateDoc(slideRef, {
-          image_url: imageUrls[i],
-          updated_at: new Date().toISOString()
-        });
-      }
-      
-      // Atualizar estado local
-      const updatedSlides = carouselData.slides.map((slide, index) => {
-        if (index < imageUrls.length) {
-          return { ...slide, image_url: imageUrls[index] };
-        }
-        return slide;
-      });
-      
-      setCarouselData({
-        ...carouselData,
-        slides: updatedSlides
-      });
-      
-      toast({
-        title: "Imagens aplicadas",
-        description: `${Math.min(imageUrls.length, carouselData.slides.length)} slides foram atualizados com imagens!`,
-      });
-      
-    } catch (error) {
-      console.error("Erro ao aplicar imagens:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível aplicar as imagens aos slides.",
-        variant: "destructive"
-      });
-    }
+  const handleImagesUploaded = (imageUrls: string[]) => {
+    // TODO: Implementar a lógica para fazer upload das imagens para o Firebase Storage e atualizar os slides no Firestore
   };
-
-  const handleApplyImageToSlide = async (imageUrl: string, slideIndex: number) => {
-    if (!carouselData || !carouselData.slides[slideIndex] || !id) return;
-    
-    try {
-      const slide = carouselData.slides[slideIndex];
-      const slideRef = doc(firestore, "carousels", id, "slides", slide.id);
-      
-      await updateDoc(slideRef, {
-        image_url: imageUrl,
-        updated_at: new Date().toISOString()
-      });
-      
-      // Atualizar estado local
-      const updatedSlides = [...carouselData.slides];
-      updatedSlides[slideIndex] = { ...updatedSlides[slideIndex], image_url: imageUrl };
-      
-      setCarouselData({
-        ...carouselData,
-        slides: updatedSlides
-      });
-      
-      toast({
-        title: "Imagem aplicada",
-        description: `Imagem aplicada ao slide ${slideIndex + 1}!`,
-      });
-      
-    } catch (error) {
-      console.error("Erro ao aplicar imagem:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível aplicar a imagem ao slide.",
-        variant: "destructive"
-      });
-    }
+  const handleApplyImageToSlide = (imageUrl: string, slideIndex: number) => {
+    // TODO: Implementar a lógica para aplicar a imagem ao slide no Firestore
   };
-
-  const handleBackgroundColorChange = async (color: string) => {
-    if (!carouselData || !id) return;
-    
-    try {
-      const slidesCollectionRef = collection(firestore, "carousels", id, "slides");
-      const slidesQuery = query(slidesCollectionRef);
-      const slides = await getDocs(slidesQuery);
-      
-      // Atualizar cor de fundo de todos os slides
-      for (const slideDoc of slides.docs) {
-        const slideRef = doc(firestore, "carousels", id, "slides", slideDoc.id);
-        await updateDoc(slideRef, {
-          background_type: "color",
-          background_value: color,
-          updated_at: new Date().toISOString()
-        });
-      }
-      
-      // Atualizar estado local
-      const updatedSlides = carouselData.slides.map(slide => ({
-        ...slide,
-        background_type: "color",
-        background_value: color
-      }));
-      
-      setCarouselData({
-        ...carouselData,
-        slides: updatedSlides
-      });
-      
-      toast({
-        title: "Cor de fundo atualizada",
-        description: "A cor de fundo foi aplicada a todos os slides!",
-      });
-      
-    } catch (error) {
-      console.error("Erro ao alterar cor de fundo:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível alterar a cor de fundo.",
-        variant: "destructive"
-      });
-    }
+  const handleBackgroundColorChange = (color: string) => {
+    // TODO: Implementar a lógica para alterar a cor de fundo dos slides no Firestore
   };
-
   const handleSlideCountChange = async (count: number) => {
-    if (!carouselData || !id) return;
-    
-    try {
-      const slidesCollectionRef = collection(firestore, "carousels", id, "slides");
-      const slidesQuery = query(slidesCollectionRef, orderBy("order_index", "asc"));
-      const existingSlides = await getDocs(slidesQuery);
-      
-      if (count > existingSlides.docs.length) {
-        // Adicionar novos slides
-        for (let i = existingSlides.docs.length; i < count; i++) {
-          await addDoc(slidesCollectionRef, {
-            content: "",
-            order_index: i,
-            image_url: null,
-            background_type: "color",
-            background_value: "#000000",
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          });
-        }
-      } else if (count < existingSlides.docs.length) {
-        // Remover slides extras
-        for (let i = count; i < existingSlides.docs.length; i++) {
-          const slideRef = doc(firestore, "carousels", id, "slides", existingSlides.docs[i].id);
-          await updateDoc(slideRef, { deleted: true });
-        }
-      }
-      
-      // Recarregar slides
-      const updatedSlidesQuery = query(
-        collection(firestore, "carousels", id, "slides"),
-        orderBy("order_index", "asc")
-      );
-      const updatedSlidesSnap = await getDocs(updatedSlidesQuery);
-      
-      const updatedSlides: Slide[] = updatedSlidesSnap.docs
-        .filter(doc => !doc.data().deleted)
-        .slice(0, count)
-        .map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        } as Slide));
-      
-      setCarouselData({
-        ...carouselData,
-        slides: updatedSlides
-      });
-      
-      toast({
-        title: "Número de slides atualizado",
-        description: `O carrossel agora tem ${count} slides!`,
-      });
-      
-    } catch (error) {
-      console.error("Erro ao alterar número de slides:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível alterar o número de slides.",
-        variant: "destructive"
-      });
-    }
+    // TODO: Implementar a lógica para alterar o número de slides no Firestore
   };
-
-  const handleUpdateLayout = async (layoutType: string) => {
-    if (!carouselData || !id) return;
-    
-    try {
-      const carouselRef = doc(firestore, "carousels", id);
-      await updateDoc(carouselRef, {
-        layout_type: layoutType,
-        updated_at: new Date().toISOString()
-      });
-      
-      setCarouselData({
-        ...carouselData,
-        layout_type: layoutType
-      });
-      
-      toast({
-        title: "Layout atualizado",
-        description: "O layout do carrossel foi alterado com sucesso!",
-      });
-      
-    } catch (error) {
-      console.error("Erro ao atualizar layout:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível atualizar o layout.",
-        variant: "destructive"
-      });
-    }
+  const handleUpdateLayout = (layoutType: string) => {
+    // TODO: Implementar a lógica para atualizar o layout do carrossel no Firestore
   };
-
   const handleUpdateTextStyles = (styles: TextStyleOptions) => {
-    setTextStyles(styles);
-    toast({
-      title: "Estilos atualizados",
-      description: "Os estilos de texto foram aplicados!",
-    });
+    // TODO: Implementar a lógica para atualizar os estilos de texto dos slides no Firestore
   };
 
   const captureSlide = async (slideElement: HTMLElement): Promise<string> => {
@@ -666,24 +330,18 @@ const Editor = () => {
                   {carouselData.title || "Carrossel sem título"}
                 </h1>
                 <p className="text-gray-400 text-sm">
-                  {carouselData.layout_type === "feed_square" ? "Instagram/LinkedIn (Quadrado)" : 
-                   carouselData.layout_type === "stories" ? "Instagram/TikTok (Stories)" : 
-                   carouselData.layout_type === "pinterest" ? "Pinterest" : "Facebook"}
+                  {carouselData.layout_type === "feed_square" ? "Instagram/LinkedIn (Quadrado)" : carouselData.layout_type === "stories" ? "Instagram/TikTok (Stories)" : carouselData.layout_type === "pinterest" ? "Pinterest" : "Facebook"}`
                 </p>
               </div>
             </div>
             <div className="flex space-x-3">
               <Button onClick={handleSaveCarousel} disabled={saving} className="bg-gradient-to-r from-purple-500 to-blue-500">
-                {saving ? (
-                  <div className="flex items-center">
+                {saving ? <div className="flex items-center">
                     <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
                     Salvando...
-                  </div>
-                ) : (
-                  <>
+                  </div> : <>
                     <Save className="mr-2 h-4 w-4" /> Salvar
-                  </>
-                )}
+                  </>}
               </Button>
             </div>
           </div>
@@ -718,12 +376,7 @@ const Editor = () => {
             <div className="grid grid-cols-12 gap-6">
               {/* Painel de Preview - Oculto na tab de conteúdo */}
               <div className={`col-span-12 ${activeTab === 'content' ? 'hidden' : 'lg:col-span-7'}`}>
-                <CarouselPreview 
-                  slides={carouselData?.slides || []} 
-                  layoutType={carouselData?.layout_type || "instagram_rect"} 
-                  textStyles={textStyles} 
-                  hidePreview={activeTab === 'content'} 
-                />
+                <CarouselPreview slides={carouselData?.slides || []} layoutType={carouselData?.layout_type || "instagram_rect"} textStyles={textStyles} hidePreview={activeTab === 'content'} />
               </div>
 
               {/* Painel de Editor - Ocupa toda a largura na tab de conteúdo */}
@@ -731,29 +384,13 @@ const Editor = () => {
                 <Card className="bg-gray-800 border-gray-700">
                   <div className="p-6">
                     <TabsContent value="images" className="mt-0">
-                      <ImagesTab 
-                        carouselId={carouselData?.id || ""} 
-                        onImagesUploaded={handleImagesUploaded} 
-                        onSelectImage={handleApplyImageToSlide} 
-                        onBackgroundColorChange={handleBackgroundColorChange} 
-                        onSlideCountChange={handleSlideCountChange} 
-                      />
+                      <ImagesTab carouselId={carouselData?.id || ""} onImagesUploaded={handleImagesUploaded} onSelectImage={handleApplyImageToSlide} onBackgroundColorChange={handleBackgroundColorChange} onSlideCountChange={handleSlideCountChange} />
                     </TabsContent>
                     <TabsContent value="content" className="mt-0">
-                      <ContentTab 
-                        carouselId={carouselData?.id || ""} 
-                        slides={carouselData?.slides || []} 
-                        onApplyGeneratedTexts={handleApplyGeneratedTexts} 
-                        onUpdateSlideContent={handleUpdateSlideContent} 
-                      />
+                      <ContentTab carouselId={carouselData?.id || ""} slides={carouselData?.slides || []} onApplyGeneratedTexts={handleApplyGeneratedTexts} onUpdateSlideContent={handleUpdateSlideContent} />
                     </TabsContent>
                     <TabsContent value="layout" className="mt-0">
-                      <LayoutTab 
-                        layoutType={carouselData?.layout_type || "instagram_rect"} 
-                        onUpdateLayout={handleUpdateLayout} 
-                        textStyles={textStyles} 
-                        onUpdateTextStyles={handleUpdateTextStyles} 
-                      />
+                      <LayoutTab layoutType={carouselData?.layout_type || "instagram_rect"} onUpdateLayout={handleUpdateLayout} textStyles={textStyles} onUpdateTextStyles={handleUpdateTextStyles} />
                     </TabsContent>
                     <TabsContent value="style" className="mt-0">
                       <TextStylesTab 
