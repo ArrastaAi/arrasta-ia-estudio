@@ -48,6 +48,25 @@ const UserCarouselsPreview: React.FC = () => {
     }
   };
 
+  const formatSafeDate = (dateString: string) => {
+    try {
+      if (!dateString) return "Data não disponível";
+      
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return "Data inválida";
+      }
+      
+      return formatDistanceToNow(date, { 
+        addSuffix: true, 
+        locale: ptBR 
+      });
+    } catch (error) {
+      console.error('[UserCarouselsPreview] Erro ao formatar data:', error);
+      return "Data não disponível";
+    }
+  };
+
   return (
     <Card className="bg-gray-800 border-gray-700 p-4">
       <div className="flex items-center justify-between mb-4">
@@ -134,10 +153,7 @@ const UserCarouselsPreview: React.FC = () => {
                     </span>
                     <Calendar className="h-3 w-3 text-gray-400 ml-2" />
                     <span className="text-gray-400 text-xs">
-                      {formatDistanceToNow(new Date(carousel.updated_at), { 
-                        addSuffix: true, 
-                        locale: ptBR 
-                      })}
+                      {formatSafeDate(carousel.updated_at)}
                     </span>
                   </div>
                 </div>

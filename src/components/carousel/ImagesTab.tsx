@@ -4,7 +4,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Layers, Sparkles } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Layers, Sparkles, Info } from "lucide-react";
 import ImageUpload from "./ImageUpload";
 import ImageGallery from "./ImageGallery";
 import { useToast } from "@/hooks/use-toast";
@@ -28,12 +29,15 @@ const ImagesTab: React.FC<ImagesTabProps> = ({
   onSlideCountChange
 }) => {
   const [activeTab, setActiveTab] = useState<string>("upload");
-  const [slideCount, setSlideCount] = useState<number>(5);
+  const [slideCount, setSlideCount] = useState<number>(4); // Mínimo padrão de 4
   const [backgroundColor, setBackgroundColor] = useState<string>("#000000");
   const [mlAnalysisEnabled, setMlAnalysisEnabled] = useState<boolean>(true);
   const [loading, setLoading] = useState<boolean>(false);
   const { toast } = useToast();
   const { user } = useFirebaseAuth();
+
+  const MIN_SLIDES = 4;
+  const MAX_SLIDES = 9;
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -59,12 +63,17 @@ const ImagesTab: React.FC<ImagesTabProps> = ({
           slides.push(doc.data());
         });
 
-        if (slides.length > 0 && slides[0]) {
-          setSlideCount(slides.length);
+        if (slides.length > 0) {
+          // Garantir que sempre respeitamos os limites
+          const currentSlideCount = Math.max(MIN_SLIDES, Math.min(slides.length, MAX_SLIDES));
+          setSlideCount(currentSlideCount);
 
-          if (slides[0].background_value) {
+          if (slides[0] && slides[0].background_value) {
             setBackgroundColor(slides[0].background_value);
           }
+        } else {
+          // Se não há slides, definir o mínimo
+          setSlideCount(MIN_SLIDES);
         }
       } catch (error) {
         console.error("Error loading settings:", error);
@@ -108,7 +117,7 @@ const ImagesTab: React.FC<ImagesTabProps> = ({
 
   const handleChangeSlideCount = (e: React.ChangeEvent<HTMLInputElement>) => {
     const count = parseInt(e.target.value);
-    if (!isNaN(count) && count > 0 && count <= 9) {
+    if (!isNaN(count) && count >= MIN_SLIDES && count <= MAX_SLIDES) {
       setSlideCount(count);
     }
   };
@@ -119,6 +128,26 @@ const ImagesTab: React.FC<ImagesTabProps> = ({
   };
 
   const handleApplySettings = () => {
+    if (slideCount < MIN_SLIDES) {
+      toast({
+        title: "Número insuficiente de slides",
+        description: `O mínimo de slides é ${MIN_SLIDES}. Ajustando automaticamente.`,
+        variant: "destructive"
+      });
+      setSlideCount(MIN_SLIDES);
+      return;
+    }
+
+    if (slideCount > MAX_SLIDES) {
+      toast({
+        title: "Muitos slides",
+        description: `O máximo de slides é ${MAX_SLIDES}. Ajustando automaticamente.`,
+        variant: "destructive"
+      });
+      setSlideCount(MAX_SLIDES);
+      return;
+    }
+
     if (onSlideCountChange) {
       onSlideCountChange(slideCount);
     }
@@ -129,12 +158,20 @@ const ImagesTab: React.FC<ImagesTabProps> = ({
 
     toast({
       title: `Configurações aplicadas`,
-      description: `Número de slides: ${slideCount}, cor de fundo atualizada.`
+      description: `Carrossel configurado com ${slideCount} slides e cor de fundo atualizada.`
     });
   };
   
   return (
     <div className="space-y-4">
+      <Alert className="bg-blue-500/10 border-blue-500/20">
+        <Info className="h-4 w-4" />
+        <AlertDescription className="text-blue-300">
+          <strong>Regras de slides:</strong> Mínimo {MIN_SLIDES} slides, máximo {MAX_SLIDES} slides.
+          Os agentes de IA se adaptarão automaticamente à quantidade selecionada.
+        </AlertDescription>
+      </Alert>
+
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid grid-cols-2 mb-4">
           <TabsTrigger value="upload">Enviar novas</TabsTrigger>
@@ -155,16 +192,19 @@ const ImagesTab: React.FC<ImagesTabProps> = ({
                   <Input
                     id="slideCount"
                     type="number"
-                    min="1"
-                    max="9"
+                    min={MIN_SLIDES}
+                    max={MAX_SLIDES}
                     value={slideCount}
                     onChange={handleChangeSlideCount}
                     className="w-24 bg-gray-600 text-white"
                   />
                   <span className="text-sm text-gray-300">
-                    (máx. 9)
+                    ({MIN_SLIDES}-{MAX_SLIDES} slides)
                   </span>
                 </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  Os agentes de IA gerarão textos adaptados para {slideCount} slides
+                </p>
               </div>
               
               <div>
@@ -209,7 +249,7 @@ const ImagesTab: React.FC<ImagesTabProps> = ({
                 disabled={loading}
               >
                 <Layers className="mr-2 h-4 w-4" />
-                Aplicar Configurações
+                Aplicar Configurações ({slideCount} slides)
               </Button>
             </div>
           </div>

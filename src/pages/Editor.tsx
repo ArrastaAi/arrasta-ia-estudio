@@ -43,6 +43,9 @@ const Editor = () => {
   const [activeTab, setActiveTab] = useState("images");
   const [debugInfo, setDebugInfo] = useState<any>({});
 
+  const MIN_SLIDES = 4;
+  const MAX_SLIDES = 9;
+
   const [textStyles, setTextStyles] = useState<TextStyleOptions>({
     alignment: "center",
     fontFamily: "helvetica",
@@ -174,6 +177,16 @@ const Editor = () => {
       console.log('[Editor] Dados insuficientes para salvar:', {
         hasCarouselData: !!carouselData,
         hasUser: !!user
+      });
+      return;
+    }
+    
+    // Validar número mínimo de slides antes de salvar
+    if (carouselData.slides.length < MIN_SLIDES) {
+      toast({
+        title: "Slides insuficientes",
+        description: `É necessário ter pelo menos ${MIN_SLIDES} slides para salvar o carrossel.`,
+        variant: "destructive"
       });
       return;
     }
@@ -326,8 +339,11 @@ const Editor = () => {
     try {
       const updatedSlides = [...carouselData.slides];
       
+      // Garantir que temos pelo menos o mínimo de slides
+      const targetSlideCount = Math.max(texts.length, MIN_SLIDES);
+      
       // Criar slides se necessário
-      while (updatedSlides.length < texts.length) {
+      while (updatedSlides.length < targetSlideCount) {
         const newSlideRef = doc(collection(db, "carousels", carouselData.id, "slides"));
         const newSlide: Slide = {
           id: newSlideRef.id,
@@ -366,7 +382,7 @@ const Editor = () => {
 
       toast({
         title: "Textos aplicados",
-        description: `${texts.length} textos foram aplicados aos slides.`
+        description: `${texts.length} textos foram aplicados aos slides. Total de slides: ${updatedSlides.length}`
       });
     } catch (error) {
       console.error("Erro ao aplicar textos:", error);
@@ -473,12 +489,23 @@ const Editor = () => {
   const handleSlideCountChange = async (count: number) => {
     if (!carouselData || !user) return;
 
+    // Validar limites
+    const validCount = Math.max(MIN_SLIDES, Math.min(count, MAX_SLIDES));
+
+    if (validCount !== count) {
+      toast({
+        title: "Número de slides ajustado",
+        description: `O número foi ajustado para ${validCount} (limite: ${MIN_SLIDES}-${MAX_SLIDES}).`,
+        variant: "default"
+      });
+    }
+
     try {
       const currentSlides = [...carouselData.slides];
       
-      if (count > currentSlides.length) {
+      if (validCount > currentSlides.length) {
         // Adicionar slides
-        for (let i = currentSlides.length; i < count; i++) {
+        for (let i = currentSlides.length; i < validCount; i++) {
           const newSlideRef = doc(collection(db, "carousels", carouselData.id, "slides"));
           const newSlide: Slide = {
             id: newSlideRef.id,
@@ -496,17 +523,27 @@ const Editor = () => {
           await setDoc(newSlideRef, newSlide);
           currentSlides.push(newSlide);
         }
-      } else if (count < currentSlides.length) {
-        // Remover slides extras (mantém apenas os primeiros 'count' slides)
-        currentSlides.splice(count);
+      } else if (validCount < currentSlides.length) {
+        // Remover slides extras (mantém apenas os primeiros 'validCount' slides)
+        currentSlides.splice(validCount);
       }
 
       setCarouselData({
         ...carouselData,
         slides: currentSlides
       });
+
+      toast({
+        title: "Slides atualizados",
+        description: `Carrossel agora tem ${validCount} slides.`
+      });
     } catch (error) {
       console.error("Erro ao alterar número de slides:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível alterar o número de slides.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -735,6 +772,12 @@ const Editor = () => {
                       {debugInfo.slides_count} slides
                     </Badge>
                   )}
+                  {carouselData && carouselData.slides.length < MIN_SLIDES && (
+                    <Badge variant="destructive" className="text-xs">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      Mín. {MIN_SLIDES} slides
+                    </Badge>
+                  )}
                   {debugInfo.save_success === false && (
                     <Badge variant="destructive" className="text-xs">
                       <AlertCircle className="h-3 w-3 mr-1" />
@@ -745,7 +788,11 @@ const Editor = () => {
               </div>
             </div>
             <div className="flex space-x-3">
-              <Button onClick={handleSaveCarousel} disabled={saving} className="bg-gradient-to-r from-purple-500 to-blue-500">
+              <Button 
+                onClick={handleSaveCarousel} 
+                disabled={saving || (carouselData && carouselData.slides.length < MIN_SLIDES)} 
+                className="bg-gradient-to-r from-purple-500 to-blue-500"
+              >
                 {saving ? (
                   <div className="flex items-center">
                     <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
@@ -753,7 +800,9 @@ const Editor = () => {
                   </div>
                 ) : (
                   <>
-                    <Save className="mr-2 h-4 w-4" /> Salvar
+                    <Save className="mr-2 h-4 w-4" /> 
+                    Salvar
+                    {carouselData && carouselData.slides.length < MIN_SLIDES && " (Mín. 4 slides)"}
                   </>
                 )}
               </Button>
@@ -777,7 +826,12 @@ const Editor = () => {
                   </div>
                   <div>
                     <span className="text-gray-400">Slides:</span>
-                    <span className="text-white ml-2">{debugInfo.slides_count || 0}</span>
+                    <span className="text-white ml-2">
+                      {debugInfo.slides_count || 0} 
+                      {debugInfo.slides_count < MIN_SLIDES && (
+                        <span className="text-red-400"> (Mín: {MIN_SLIDES})</span>
+                      )}
+                    </span>
                   </div>
                   {debugInfo.last_save && (
                     <div>

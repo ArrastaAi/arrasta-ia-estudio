@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -12,6 +11,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useFirebaseAuth } from "@/contexts/FirebaseAuthContext";
 import { db, firestore } from "@/integrations/firebase/client";
 import { collection, query, where, getDocs, orderBy, deleteDoc, doc } from "firebase/firestore";
+import { formatDistanceToNow } from "date-fns";
+import ptBR from "date-fns/locale/pt-BR";
 
 const Dashboard = () => {
   const { user } = useFirebaseAuth();
@@ -212,6 +213,50 @@ const Dashboard = () => {
     </Card>
   );
 
+  const formatSafeDate = (dateString: string) => {
+    try {
+      if (!dateString) return "Data não disponível";
+      
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return "Data inválida";
+      }
+      
+      return formatDistanceToNow(date, { 
+        addSuffix: true, 
+        locale: ptBR 
+      });
+    } catch (error) {
+      console.error('[Dashboard] Erro ao formatar data:', error);
+      return "Data não disponível";
+    }
+  };
+
+  const getLayoutAspectRatio = (layoutType: string) => {
+    switch (layoutType) {
+      case "feed_square":
+        return "aspect-square";
+      case "stories":
+        return "aspect-[9/16]";
+      case "pinterest":
+        return "aspect-[2/3]";
+      case "facebook":
+        return "aspect-[16/10]";
+      default:
+        return "aspect-video";
+    }
+  };
+
+  const getLayoutDisplayName = (layoutType: string) => {
+    switch (layoutType) {
+      case "feed_square": return "Instagram/LinkedIn (Quadrado)";
+      case "stories": return "Stories (9:16)";
+      case "pinterest": return "Pinterest (2:3)";
+      case "facebook": return "Facebook (16:10)";
+      default: return "Padrão (16:9)";
+    }
+  };
+
   return (
     <MainLayout>
       <div className="bg-gray-900 min-h-screen py-12">
@@ -220,7 +265,7 @@ const Dashboard = () => {
             <div>
               <h1 className="text-3xl font-bold text-white mb-2">Meus Carrosséis</h1>
               <p className="text-gray-400">
-                Gerencie e edite seus carrosséis ou crie novos
+                Gerencie e edite seus carrosséis ou crie novos (mínimo 4 slides, máximo 9)
               </p>
             </div>
             <Button
@@ -268,17 +313,12 @@ const Dashboard = () => {
                       className="bg-gray-800 border-gray-700 overflow-hidden"
                     >
                       <CardHeader className="p-0">
-                        <div className="h-48 bg-gray-700 relative">
-                          <div className="absolute inset-0 flex items-center justify-center text-gray-500">
-                            {carousel.layout_type === "feed_square"
-                              ? "Quadrado"
-                              : carousel.layout_type === "stories"
-                              ? "Stories"
-                              : carousel.layout_type === "pinterest"
-                              ? "Pinterest"
-                              : carousel.layout_type === "facebook"
-                              ? "Facebook"
-                              : "YouTube"}
+                        <div className={`${getLayoutAspectRatio(carousel.layout_type)} bg-gray-700 relative overflow-hidden`}>
+                          <div className="absolute inset-0 flex items-center justify-center text-gray-500 text-center p-4">
+                            <div>
+                              <Layout className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                              <p className="text-sm">{getLayoutDisplayName(carousel.layout_type)}</p>
+                            </div>
                           </div>
                           {carousel.published && (
                             <div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full">
@@ -291,9 +331,13 @@ const Dashboard = () => {
                         <CardTitle className="text-white text-xl mb-2">
                           {carousel.title}
                         </CardTitle>
-                        <p className="text-gray-400 line-clamp-2">
+                        <p className="text-gray-400 line-clamp-2 mb-3">
                           {carousel.description || "Sem descrição"}
                         </p>
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                          <Calendar className="h-3 w-3" />
+                          <span>{formatSafeDate(carousel.updated_at || carousel.created_at)}</span>
+                        </div>
                       </CardContent>
                       <CardFooter className="flex justify-between p-6 pt-0 border-t border-gray-700">
                         <Button
@@ -327,7 +371,9 @@ const Dashboard = () => {
                     Crie seu primeiro carrossel
                   </h3>
                   <p className="text-gray-400 mb-6 max-w-md">
-                    Você ainda não criou nenhum carrossel. Comece agora e impressione seu público!
+                    Você ainda não criou nenhum carrossel. Comece agora e impressione seu público! 
+                    <br />
+                    <span className="text-sm text-purple-400">Mínimo: 4 slides | Máximo: 9 slides</span>
                   </p>
                   <Button
                     asChild
@@ -356,9 +402,12 @@ const Dashboard = () => {
                         className="bg-gray-800 border-gray-700 overflow-hidden"
                       >
                         <CardHeader className="p-0">
-                          <div className="h-48 bg-gray-700 relative">
-                            <div className="absolute inset-0 flex items-center justify-center text-gray-500">
-                              {carousel.layout_type}
+                          <div className={`${getLayoutAspectRatio(carousel.layout_type)} bg-gray-700 relative overflow-hidden`}>
+                            <div className="absolute inset-0 flex items-center justify-center text-gray-500 text-center p-4">
+                              <div>
+                                <Layout className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                                <p className="text-sm">{getLayoutDisplayName(carousel.layout_type)}</p>
+                              </div>
                             </div>
                             <div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full">
                               Publicado
@@ -369,9 +418,13 @@ const Dashboard = () => {
                           <CardTitle className="text-white text-xl mb-2">
                             {carousel.title}
                           </CardTitle>
-                          <p className="text-gray-400 line-clamp-2">
+                          <p className="text-gray-400 line-clamp-2 mb-3">
                             {carousel.description || "Sem descrição"}
                           </p>
+                          <div className="flex items-center gap-2 text-xs text-gray-500">
+                            <Calendar className="h-3 w-3" />
+                            <span>{formatSafeDate(carousel.updated_at || carousel.created_at)}</span>
+                          </div>
                         </CardContent>
                         <CardFooter className="flex justify-between p-6 pt-0 border-t border-gray-700">
                           <Button
@@ -423,9 +476,12 @@ const Dashboard = () => {
                         className="bg-gray-800 border-gray-700 overflow-hidden"
                       >
                         <CardHeader className="p-0">
-                          <div className="h-48 bg-gray-700 relative">
-                            <div className="absolute inset-0 flex items-center justify-center text-gray-500">
-                              {carousel.layout_type}
+                          <div className={`${getLayoutAspectRatio(carousel.layout_type)} bg-gray-700 relative overflow-hidden`}>
+                            <div className="absolute inset-0 flex items-center justify-center text-gray-500 text-center p-4">
+                              <div>
+                                <Layout className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                                <p className="text-sm">{getLayoutDisplayName(carousel.layout_type)}</p>
+                              </div>
                             </div>
                           </div>
                         </CardHeader>
@@ -433,9 +489,13 @@ const Dashboard = () => {
                           <CardTitle className="text-white text-xl mb-2">
                             {carousel.title}
                           </CardTitle>
-                          <p className="text-gray-400 line-clamp-2">
+                          <p className="text-gray-400 line-clamp-2 mb-3">
                             {carousel.description || "Sem descrição"}
                           </p>
+                          <div className="flex items-center gap-2 text-xs text-gray-500">
+                            <Calendar className="h-3 w-3" />
+                            <span>{formatSafeDate(carousel.updated_at || carousel.created_at)}</span>
+                          </div>
                         </CardContent>
                         <CardFooter className="flex justify-between p-6 pt-0 border-t border-gray-700">
                           <Button

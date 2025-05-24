@@ -7,15 +7,22 @@ import GeneratedTexts from "./ai-text-generator/GeneratedTexts";
 import AgentInfoDisplay from "./ai-text-generator/AgentInfoDisplay";
 import { useFirebaseTextGeneration } from "@/hooks/useFirebaseTextGeneration";
 import { Button } from "@/components/ui/button";
-import { Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Trash2, Info } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface FirebaseAITextGeneratorProps {
   carouselId: string;
   onApplyTexts: (texts: { id: number; text: string }[]) => void;
+  slideCount?: number; // Nova prop para quantidade de slides
 }
 
-const FirebaseAITextGenerator = ({ carouselId, onApplyTexts }: FirebaseAITextGeneratorProps) => {
+const FirebaseAITextGenerator = ({ 
+  carouselId, 
+  onApplyTexts,
+  slideCount = 4 // Padrão mínimo de 4 slides
+}: FirebaseAITextGeneratorProps) => {
   const {
     formData,
     loading,
@@ -27,15 +34,27 @@ const FirebaseAITextGenerator = ({ carouselId, onApplyTexts }: FirebaseAITextGen
     handleApply,
     clearGeneratedTexts,
     setFormData
-  } = useFirebaseTextGeneration(onApplyTexts);
+  } = useFirebaseTextGeneration(onApplyTexts, slideCount); // Passar slideCount para o hook
 
   const hasGeneratedTexts = parsedTexts.length > 0;
   
   // Número máximo de slides permitido para exibição
   const MAX_SLIDES_ALLOWED = 9;
+  const MIN_SLIDES_ALLOWED = 4;
+
+  // Garantir que slideCount está dentro dos limites
+  const validSlideCount = Math.max(MIN_SLIDES_ALLOWED, Math.min(slideCount, MAX_SLIDES_ALLOWED));
 
   return (
     <div className="space-y-4">
+      <Alert className="bg-purple-500/10 border-purple-500/20">
+        <Info className="h-4 w-4" />
+        <AlertDescription className="text-purple-300">
+          <strong>Geração adaptativa:</strong> Os agentes irão gerar conteúdo para <Badge variant="secondary" className="mx-1">{validSlideCount} slides</Badge>.
+          Cada agente adaptará seu estilo e estrutura para essa quantidade.
+        </AlertDescription>
+      </Alert>
+
       <Tabs defaultValue={activeAgent}>
         <TabsList className="bg-gray-700">
           <TabsTrigger 
@@ -70,7 +89,7 @@ const FirebaseAITextGenerator = ({ carouselId, onApplyTexts }: FirebaseAITextGen
             />
             
             <div className="text-sm text-gray-400 mt-2 italic">
-              Este assistente cria carrosséis completos com base no tema, público-alvo e objetivo escolhidos.
+              Este assistente cria carrosséis completos com {validSlideCount} slides baseados no tema, público-alvo e objetivo escolhidos.
             </div>
           </TabsContent>
           
@@ -82,7 +101,7 @@ const FirebaseAITextGenerator = ({ carouselId, onApplyTexts }: FirebaseAITextGen
             />
             
             <div className="text-sm text-gray-400 mt-2 italic">
-              Este assistente é especialista em copywriting viral para carrosséis. Informe o tema, público-alvo e objetivo para gerar textos persuasivos.
+              Este assistente é especialista em copywriting viral. Irá gerar {validSlideCount} textos persuasivos adaptados ao tema, público-alvo e objetivo.
             </div>
           </TabsContent>
           
@@ -94,7 +113,7 @@ const FirebaseAITextGenerator = ({ carouselId, onApplyTexts }: FirebaseAITextGen
             />
             
             <div className="text-sm text-gray-400 mt-2 italic">
-              O Criador de Frases transforma qualquer texto em slides prontos para carrossel. Cole seu texto acima para formatá-lo.
+              O Criador de Frases transformará seu texto em {validSlideCount} slides formatados e prontos para carrossel.
             </div>
           </TabsContent>
         </div>
@@ -103,13 +122,14 @@ const FirebaseAITextGenerator = ({ carouselId, onApplyTexts }: FirebaseAITextGen
       <div className="flex flex-col space-y-4">
         <GenerateButton 
           loading={loading} 
-          onClick={handleGenerateText} 
+          onClick={handleGenerateText}
+          slideCount={validSlideCount}
         />
         
         {parsedTexts.length > 0 && (
           <div className="flex justify-between items-center">
             <div className="text-sm text-gray-400">
-              Máximo de {MAX_SLIDES_ALLOWED} slides permitido
+              {parsedTexts.length} de {validSlideCount} slides gerados
             </div>
             <Button 
               variant="outline" 
@@ -124,7 +144,7 @@ const FirebaseAITextGenerator = ({ carouselId, onApplyTexts }: FirebaseAITextGen
         
         {hasGeneratedTexts && (
           <Card className="bg-gray-750 border-gray-600 p-4 mt-4">
-            <AgentInfoDisplay agent={activeAgent} formData={formData} />
+            <AgentInfoDisplay agent={activeAgent} formData={formData} slideCount={validSlideCount} />
             <GeneratedTexts 
               parsedTexts={parsedTexts.slice(0, MAX_SLIDES_ALLOWED)} 
               handleApply={handleApply} 

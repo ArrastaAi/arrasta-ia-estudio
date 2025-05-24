@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { parseRawText } from "@/components/carousel/ai-text-generator/textParser";
@@ -19,10 +20,14 @@ interface FormData {
   content: string;
 }
 
-// Número máximo de slides permitido em toda a aplicação
+// Constantes para slides
 const MAX_SLIDES_ALLOWED = 9;
+const MIN_SLIDES_ALLOWED = 4;
 
-export const useFirebaseTextGeneration = (onApplyTexts: (texts: GeneratedText[]) => void) => {
+export const useFirebaseTextGeneration = (
+  onApplyTexts: (texts: GeneratedText[]) => void,
+  slideCount: number = MIN_SLIDES_ALLOWED
+) => {
   const { toast } = useToast();
   const { user } = useFirebaseAuth();
   const [loading, setLoading] = useState(false);
@@ -38,6 +43,9 @@ export const useFirebaseTextGeneration = (onApplyTexts: (texts: GeneratedText[])
     goal: "educar",
     content: "",
   });
+
+  // Garantir que slideCount está dentro dos limites
+  const validSlideCount = Math.max(MIN_SLIDES_ALLOWED, Math.min(slideCount, MAX_SLIDES_ALLOWED));
 
   // Load previously generated texts from localStorage on component mount
   useEffect(() => {
@@ -85,6 +93,7 @@ export const useFirebaseTextGeneration = (onApplyTexts: (texts: GeneratedText[])
         agent: agent,
         texts: texts,
         form_data: formData,
+        slide_count: validSlideCount,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       });
@@ -126,10 +135,9 @@ export const useFirebaseTextGeneration = (onApplyTexts: (texts: GeneratedText[])
   };
 
   const generateFallbackTexts = (agent: string, topic: string): GeneratedText[] => {
-    const slideCount = Math.min(6, MAX_SLIDES_ALLOWED);
     const texts: GeneratedText[] = [];
     
-    for (let i = 1; i <= slideCount; i++) {
+    for (let i = 1; i <= validSlideCount; i++) {
       let text = "";
       
       switch (agent) {
@@ -157,7 +165,7 @@ export const useFirebaseTextGeneration = (onApplyTexts: (texts: GeneratedText[])
       setLoading(true);
       toast({
         title: "Gerando conteúdo",
-        description: "Aguarde enquanto a IA processa seu pedido...",
+        description: `Aguarde enquanto a IA processa seu pedido para ${validSlideCount} slides...`,
       });
 
       // Validating input data
@@ -173,12 +181,13 @@ export const useFirebaseTextGeneration = (onApplyTexts: (texts: GeneratedText[])
         throw new Error("Por favor, informe o conteúdo a ser formatado");
       }
       
-      // Sempre gerar 9 slides (máximo permitido)
-      const slideCount = MAX_SLIDES_ALLOWED;
+      console.log("Gerando conteúdo com:", { 
+        agent: activeAgent, 
+        topic: formData.topic, 
+        slideCount: validSlideCount 
+      });
       
-      console.log("Gerando conteúdo com:", { agent: activeAgent, topic: formData.topic, slideCount });
-      
-      // Chamar Edge Function do Supabase
+      // Chamar Edge Function do Supabase com o número correto de slides
       const data = await callSupabaseEdgeFunction({
         agent: activeAgent,
         topic: formData.topic,
@@ -186,7 +195,7 @@ export const useFirebaseTextGeneration = (onApplyTexts: (texts: GeneratedText[])
         goal: formData.goal,
         content: formData.content,
         prompt: formData.prompt,
-        slideCount: slideCount
+        slideCount: validSlideCount // Usar o número correto de slides
       });
 
       console.log("Resposta da geração:", data);
@@ -198,16 +207,25 @@ export const useFirebaseTextGeneration = (onApplyTexts: (texts: GeneratedText[])
       setRawGeneratedText(data.generatedText || "");
       
       if (data.parsedTexts && Array.isArray(data.parsedTexts) && data.parsedTexts.length > 0) {
-        const limitedParsedTexts = data.parsedTexts.slice(0, MAX_SLIDES_ALLOWED);
+        // Garantir que temos exatamente o número de slides solicitado
+        let processedTexts = data.parsedTexts.slice(0, validSlideCount);
         
-        setParsedTexts(limitedParsedTexts);
+        // Se temos menos slides que o solicitado, completar
+        while (processedTexts.length < validSlideCount) {
+          processedTexts.push({
+            id: processedTexts.length + 1,
+            text: `Slide ${processedTexts.length + 1} - Conteúdo adicional necessário`
+          });
+        }
+        
+        setParsedTexts(processedTexts);
         
         // Salvar no Firebase Firestore
-        await saveGeneratedTextToFirestore(limitedParsedTexts, activeAgent);
+        await saveGeneratedTextToFirestore(processedTexts, activeAgent);
         
         toast({
           title: "Sucesso!",
-          description: `${limitedParsedTexts.length} slides foram gerados com sucesso.`,
+          description: `${processedTexts.length} slides foram gerados com sucesso para seu carrossel.`,
         });
       } else {
         throw new Error("Não foi possível processar o texto gerado.");
@@ -235,12 +253,12 @@ export const useFirebaseTextGeneration = (onApplyTexts: (texts: GeneratedText[])
       return;
     }
     
-    const limitedTexts = parsedTexts.slice(0, MAX_SLIDES_ALLOWED);
+    const limitedTexts = parsedTexts.slice(0, validSlideCount);
     
     onApplyTexts(limitedTexts);
     toast({
       title: "Textos aplicados",
-      description: "Os textos foram aplicados com sucesso aos slides",
+      description: `${limitedTexts.length} textos foram aplicados com sucesso aos slides`,
     });
   };
 
@@ -256,6 +274,7 @@ export const useFirebaseTextGeneration = (onApplyTexts: (texts: GeneratedText[])
     loading,
     activeAgent,
     parsedTexts,
+    slideCount: validSlideCount,
     setActiveAgent,
     handleInputChange,
     handleGenerateText,
