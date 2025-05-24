@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from './use-toast';
 import { FirebaseAPIKey } from '@/types/firebase.types';
@@ -16,7 +17,7 @@ import {
 
 export const useFirebaseAPIKeyManager = () => {
   const { toast } = useToast();
-  const { user } = useFirebaseAuth();
+  const { user, isAdmin } = useFirebaseAuth();
   const [apiKeys, setApiKeys] = useState<FirebaseAPIKey[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,6 +35,8 @@ export const useFirebaseAPIKeyManager = () => {
 
   /**
    * Carrega chaves da API do Firestore
+   * Para admins: carrega apenas suas chaves
+   * Para usuários comuns: carrega todas as chaves disponíveis no sistema
    */
   const loadAPIKeys = async () => {
     try {
@@ -44,20 +47,20 @@ export const useFirebaseAPIKeyManager = () => {
         throw new Error('Usuário não autenticado');
       }
       
-      // Tenta buscar as chaves existentes
-      const result = await fetchAndProcessAPIKeys(user.uid);
+      // Busca chaves baseado no tipo de usuário
+      const result = await fetchAndProcessAPIKeys(user.uid, isAdmin);
       
       if (result.success) {
         setApiKeys(result.data);
       } else {
-        // Se não houver chaves, cria a chave padrão
-        if (defaultAPIKey) {
+        // Se não houver chaves e for admin, pode criar a chave padrão
+        if (isAdmin && defaultAPIKey) {
           const defaultKeyResult = await setupDefaultKey(defaultAPIKey, user.uid);
           
           if (defaultKeyResult.success) {
             setApiKeys(defaultKeyResult.data);
           } else {
-            throw new Error('Não foi possível carregar ou criar chaves API');
+            setApiKeys([]);
           }
         } else {
           setApiKeys([]);
@@ -66,15 +69,22 @@ export const useFirebaseAPIKeyManager = () => {
     } catch (err) {
       console.error('Erro ao carregar chaves API:', err);
       setError('Não foi possível carregar as chaves de API.');
-      showErrorToast('Não foi possível carregar as chaves de API do servidor.');
+      if (isAdmin) {
+        showErrorToast('Não foi possível carregar as chaves de API do servidor.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  // Adiciona uma nova chave de API
+  // Adiciona uma nova chave de API (apenas para admins)
   const addAPIKey = async (keyData: Omit<FirebaseAPIKey, 'id' | 'created_at' | 'user_id'>) => {
     try {
+      if (!isAdmin) {
+        showErrorToast('Apenas administradores podem gerenciar chaves de API.');
+        return false;
+      }
+
       setLoading(true);
       setError(null);
       
@@ -134,19 +144,22 @@ export const useFirebaseAPIKeyManager = () => {
     }
   };
 
-  // Reseta o contador de uso de uma chave
+  // Reseta o contador de uso de uma chave (apenas para admins)
   const resetKeyUsage = async (keyId: string) => {
     try {
+      if (!isAdmin) {
+        showErrorToast('Apenas administradores podem resetar contadores.');
+        return false;
+      }
+
       setLoading(true);
       
-      // Buscar a chave pelo ID para obter o valor da chave (key)
       const keyToReset = apiKeys.find(key => key.id === keyId);
       
       if (!keyToReset) {
         throw new Error('Chave não encontrada');
       }
       
-      // Chamar resetAPIKeyUsage com o ID correto
       await resetAPIKeyUsage(keyId);
       
       toast({
@@ -154,7 +167,6 @@ export const useFirebaseAPIKeyManager = () => {
         description: 'O contador de uso da chave foi resetado com sucesso.'
       });
       
-      // Recarrega a lista de chaves
       await loadAPIKeys();
       
       return true;
@@ -167,11 +179,15 @@ export const useFirebaseAPIKeyManager = () => {
     }
   };
 
-  // Remove uma chave de API
+  // Remove uma chave de API (apenas para admins)
   const deleteAPIKey = async (keyId: string) => {
     try {
+      if (!isAdmin) {
+        showErrorToast('Apenas administradores podem excluir chaves.');
+        return false;
+      }
+
       await removeAPIKey(keyId);
-      // Recarrega a lista após a exclusão
       await loadAPIKeys();
       return true;
     } catch (error) {
@@ -185,15 +201,15 @@ export const useFirebaseAPIKeyManager = () => {
     if (user) {
       loadAPIKeys();
     }
-  }, [user]);
+  }, [user, isAdmin]);
 
-  // Obtém a melhor chave disponível (com menos uso em relação ao limite)
+  // Obtém a melhor chave disponível para uso
   const getBestAvailableKey = (): string | null => {
     if (apiKeys.length === 0) return defaultAPIKey;
     
     const bestKey = findBestAvailableKey(apiKeys);
     
-    if (!bestKey) {
+    if (!bestKey && isAdmin) {
       toast({
         title: 'Limite de API excedido',
         description: 'Todas as chaves de API atingiram seus limites de uso. Por favor, adicione uma nova chave.',

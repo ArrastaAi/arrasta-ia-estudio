@@ -1,3 +1,4 @@
+
 import { 
   collection, 
   doc, 
@@ -17,19 +18,22 @@ import { firestore } from "@/integrations/firebase/client";
 import { FirebaseAPIKey } from "@/types/firebase.types";
 
 /**
- * Carrega todas as chaves de API do usuário do Firestore
+ * Carrega todas as chaves de API do Firestore
+ * Se userId não for especificado, carrega TODAS as chaves (para usuários comuns usarem)
  */
 export const fetchAPIKeys = async (userId?: string) => {
   try {
     let apiKeysQuery;
     
     if (userId) {
+      // Admin buscando suas próprias chaves
       apiKeysQuery = query(
         collection(firestore, 'api_keys'),
         where('user_id', '==', userId),
         orderBy('created_at', 'desc')
       );
     } else {
+      // Usuários comuns buscando todas as chaves disponíveis no sistema
       apiKeysQuery = query(
         collection(firestore, 'api_keys'),
         orderBy('created_at', 'desc')
@@ -62,10 +66,13 @@ export const fetchAPIKeys = async (userId?: string) => {
 
 /**
  * Tenta carregar as chaves de API do banco de dados
+ * Para usuários comuns, não especifica userId para buscar todas as chaves
  */
-export const fetchAndProcessAPIKeys = async (userId?: string) => {
+export const fetchAndProcessAPIKeys = async (userId?: string, isAdmin?: boolean) => {
   try {
-    const data = await fetchAPIKeys(userId);
+    // Se for admin, busca apenas suas chaves. Se for usuário comum, busca todas
+    const searchUserId = isAdmin ? userId : undefined;
+    const data = await fetchAPIKeys(searchUserId);
     
     if (data && data.length > 0) {
       return { success: true, data };
@@ -87,7 +94,7 @@ export const setupDefaultKey = async (defaultApiKey: string, userId: string) => 
     
     if (success) {
       // Recarrega os dados após criar a chave padrão
-      const result = await fetchAndProcessAPIKeys(userId);
+      const result = await fetchAndProcessAPIKeys(userId, true);
       if (result.success) {
         return { success: true, data: result.data };
       }
@@ -221,12 +228,13 @@ export const createDefaultApiKey = async (defaultApiKey: string, userId: string)
 
 /**
  * Chave de API padrão para uso quando não houver outras disponíveis
- * Deve ser configurada pelo usuário nas configurações
+ * Deve ser configurada pelo admin nas configurações
  */
 export const defaultAPIKey = '';
 
 /**
  * Encontra a melhor chave disponível com base no uso/limite
+ * Prioriza chaves com menor uso relativo
  */
 export const findBestAvailableKey = (apiKeys: FirebaseAPIKey[]): string | null => {
   if (apiKeys.length === 0) return defaultAPIKey;

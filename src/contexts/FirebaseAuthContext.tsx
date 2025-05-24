@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { 
   User, 
@@ -40,7 +41,8 @@ export const FirebaseAuthProvider = ({ children }: { children: ReactNode }) => {
       if (userProfileSnap.exists()) {
         const profileData = userProfileSnap.data() as FirebaseUserProfile;
         setProfile(profileData);
-        setIsAdmin(profileData.is_admin || false);
+        // Verificar se é admin pelo email do usuário
+        setIsAdmin(user?.email === "ricoandrade01@gmail.com");
       } else {
         console.log("Perfil de usuário não encontrado");
         setProfile(null);
@@ -59,6 +61,8 @@ export const FirebaseAuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(currentUser);
       
       if (currentUser) {
+        // Verificar se é admin pelo email
+        setIsAdmin(currentUser.email === "ricoandrade01@gmail.com");
         loadUserProfile(currentUser.uid);
       } else {
         setProfile(null);
@@ -69,7 +73,7 @@ export const FirebaseAuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [user?.email]);
 
   const signIn = async (email: string, password: string) => {
     try {
@@ -110,7 +114,7 @@ export const FirebaseAuthProvider = ({ children }: { children: ReactNode }) => {
         avatar_url: null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        is_admin: false
+        is_admin: newUser.email === "ricoandrade01@gmail.com"
       };
       
       await setDoc(doc(firestore, 'profiles', newUser.uid), userProfile);

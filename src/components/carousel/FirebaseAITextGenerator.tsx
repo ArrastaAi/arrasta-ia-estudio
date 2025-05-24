@@ -1,12 +1,12 @@
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { YuriFormFields, FormatterFields } from "./ai-text-generator/FormFields";
 import GenerateButton from "./ai-text-generator/GenerateButton";
 import GeneratedTexts from "./ai-text-generator/GeneratedTexts";
 import { useFirebaseTextGeneration } from "@/hooks/useFirebaseTextGeneration";
 import { Button } from "@/components/ui/button";
-import { Trash2, AlertTriangle } from "lucide-react";
+import { Trash2, InfoIcon } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { Link } from "react-router-dom";
 
 interface FirebaseAITextGeneratorProps {
   carouselId: string;
@@ -82,21 +82,16 @@ const FirebaseAITextGenerator = ({ carouselId, onApplyTexts }: FirebaseAITextGen
       </Tabs>
       
       <div className="flex flex-col space-y-4">
-        {/* Aviso sobre a necessidade de configurar uma chave de API */}
-        {!formData.topic && !formData.content && (
-          <div className="text-amber-400 text-sm border border-amber-600 bg-amber-950/30 p-3 rounded-md flex items-start">
-            <AlertTriangle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-medium">Chave de API necessária</p>
-              <p className="mt-1">
-                Para usar a geração de conteúdo com IA, você precisa configurar uma chave de API do Google Gemini.{' '}
-                <Link to="/settings" className="text-amber-300 hover:text-amber-200 underline">
-                  Clique aqui para configurar sua chave.
-                </Link>
-              </p>
-            </div>
+        {/* Informação sobre sistema interno */}
+        <div className="text-blue-400 text-sm border border-blue-600 bg-blue-950/30 p-3 rounded-md flex items-start">
+          <InfoIcon className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-medium">Sistema de IA Interno</p>
+            <p className="mt-1">
+              O ArrastaAí possui um sistema interno de IA. Não se preocupe com configurações - tudo está pronto para uso!
+            </p>
           </div>
-        )}
+        </div>
         
         <GenerateButton 
           loading={loading} 

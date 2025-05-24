@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Loader2, Sparkles, AlertCircle } from "lucide-react";
-import { useAPIKeyManager } from "@/hooks/useAPIKeyManager";
+import { useFirebaseAPIKeyManager } from "@/hooks/useFirebaseAPIKeyManager";
 import { useEffect, useState } from "react";
 
 interface GenerateButtonProps {
@@ -10,7 +10,7 @@ interface GenerateButtonProps {
 }
 
 const GenerateButton = ({ loading, onClick }: GenerateButtonProps) => {
-  const { getBestAvailableKey } = useAPIKeyManager();
+  const { getBestAvailableKey } = useFirebaseAPIKeyManager();
   const [hasApiKey, setHasApiKey] = useState<boolean>(true);
 
   useEffect(() => {
@@ -30,7 +30,7 @@ const GenerateButton = ({ loading, onClick }: GenerateButtonProps) => {
         className="bg-yellow-500/20 border-yellow-500 text-yellow-500 hover:bg-yellow-500/30"
       >
         <AlertCircle className="mr-2 h-4 w-4" />
-        Chave API não configurada
+        Sistema indisponível
       </Button>
     );
   }

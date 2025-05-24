@@ -1,9 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Slide } from "@/types/database.types";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import AITextGenerator from "@/components/carousel/AITextGenerator";
+import FirebaseAITextGenerator from "@/components/carousel/FirebaseAITextGenerator";
 import { useToast } from '@/hooks/use-toast';
 
 interface ContentTabProps {
@@ -44,7 +44,7 @@ const ContentTab: React.FC<ContentTabProps> = ({
         <h3 className="text-lg font-medium text-white">Geração de Conteúdo</h3>
       </div>
       
-      <AITextGenerator carouselId={carouselId} onApplyTexts={handleApplyCreativeTexts} />
+      <FirebaseAITextGenerator carouselId={carouselId} onApplyTexts={handleApplyCreativeTexts} />
       
       {showManualEditor && (
         <>
