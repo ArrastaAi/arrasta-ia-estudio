@@ -47,16 +47,26 @@ const Editor = () => {
   const MAX_SLIDES = 9;
 
   const [textStyles, setTextStyles] = useState<TextStyleOptions>({
-    alignment: "center",
+    textSize: "medium",
+    textPosition: "center",
+    textStyle: "minimal",
+    textColor: "#FFFFFF",
     fontFamily: "helvetica",
-    fontSize: 18,
     hasBackground: false,
     backgroundColor: "#000000",
     backgroundOpacity: 50,
+    alignment: "center",
+    fontSize: 18,
     hasOutline: false,
     outlineColor: "#ffffff",
     outlineWidth: 1,
-    textPosition: "center",
+    textHierarchy: "primary",
+    fontWeight: "regular",
+    brandStyle: "arrastaai_minimal",
+    useIntelligentPositioning: true,
+    overlayIntensity: 0,
+    textCase: "none",
+    letterSpacing: 0.02
   });
 
   useEffect(() => {

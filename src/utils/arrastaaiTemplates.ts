@@ -18,6 +18,7 @@ export const ARRASTAAI_TEMPLATES: Record<string, ArrastaAiTemplate> = {
       textPosition: "center",
       textStyle: "impact",
       textColor: ARRASTAAI_COLORS.white,
+      fontFamily: "bebas",
       hasBackground: true,
       backgroundColor: ARRASTAAI_COLORS.black,
       backgroundOpacity: 60,
@@ -42,6 +43,7 @@ export const ARRASTAAI_TEMPLATES: Record<string, ArrastaAiTemplate> = {
       textPosition: "center",
       textStyle: "elegant",
       textColor: ARRASTAAI_COLORS.darkGray,
+      fontFamily: "helvetica",
       hasBackground: false,
       textCase: "none",
       fontWeight: "regular"
@@ -64,6 +66,7 @@ export const ARRASTAAI_TEMPLATES: Record<string, ArrastaAiTemplate> = {
       textPosition: "bottom",
       textStyle: "cta",
       textColor: ARRASTAAI_COLORS.white,
+      fontFamily: "bebas",
       hasBackground: true,
       backgroundColor: ARRASTAAI_COLORS.purple,
       backgroundOpacity: 100,
@@ -88,9 +91,35 @@ export const ARRASTAAI_TEMPLATES: Record<string, ArrastaAiTemplate> = {
       textPosition: "center",
       textStyle: "minimal",
       textColor: ARRASTAAI_COLORS.white,
+      fontFamily: "helvetica",
       hasBackground: false,
       textCase: "none",
       fontWeight: "regular"
+    }
+  },
+
+  hyeser: {
+    id: "hyeser",
+    name: "Hyeser Style",
+    description: "Estilo artístico com fontes manuscritas",
+    preview: "🎨",
+    colors: {
+      primary: ARRASTAAI_COLORS.black,
+      secondary: ARRASTAAI_COLORS.purple,
+      background: ARRASTAAI_COLORS.black,
+      text: ARRASTAAI_COLORS.white
+    },
+    textStyle: {
+      textSize: "large",
+      textPosition: "center",
+      textStyle: "hyeser",
+      textColor: ARRASTAAI_COLORS.white,
+      fontFamily: "brusher",
+      hasBackground: true,
+      backgroundColor: ARRASTAAI_COLORS.black,
+      backgroundOpacity: 80,
+      textCase: "uppercase",
+      fontWeight: "bold"
     }
   }
 };

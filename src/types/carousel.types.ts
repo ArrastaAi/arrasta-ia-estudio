@@ -3,15 +3,15 @@ export interface TextStyleOptions {
   // Propriedades essenciais do Instagram Stories
   textSize: "small" | "medium" | "large";
   textPosition: "top" | "center" | "bottom";
-  textStyle: "impact" | "elegant" | "cta" | "minimal";
+  textStyle: "impact" | "elegant" | "cta" | "minimal" | "hyeser";
   textColor: string;
+  fontFamily: "helvetica" | "pacifico" | "bebas" | "brusher" | "selima" | "fixture" | "serif" | "mono";
   hasBackground: boolean;
   backgroundColor?: string;
   backgroundOpacity?: number;
   
   // Propriedades legadas (manter compatibilidade)
   alignment: "left" | "center" | "right";
-  fontFamily: "helvetica" | "fixture" | "serif" | "mono";
   fontSize: number;
   hasOutline: boolean;
   outlineColor: string;
