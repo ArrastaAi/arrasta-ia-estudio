@@ -1,10 +1,9 @@
-
 import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext } from "@/components/ui/carousel";
 import { Slide } from "@/types/database.types";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { TextStyleOptions } from "@/types/carousel.types";
+import { TextStyleOptions, ARRASTAAI_COLORS } from "@/types/carousel.types";
 import SlideContent from "./preview/SlideContent";
 import CarouselNavigation from "./preview/CarouselNavigation";
 import { useLayoutStyles } from "./preview/useLayoutStyles";
@@ -29,16 +28,26 @@ const CarouselPreview: React.FC<CarouselPreviewProps> = ({
   }
 
   const defaultTextStyles: TextStyleOptions = {
+    textSize: "medium",
+    textPosition: "center",
+    textStyle: "minimal",
+    textColor: ARRASTAAI_COLORS.white,
+    hasBackground: false,
+    backgroundColor: ARRASTAAI_COLORS.black,
+    backgroundOpacity: 60,
     alignment: "center",
     fontFamily: "helvetica",
-    fontSize: 18,
-    hasBackground: false,
-    backgroundColor: "#000000",
-    backgroundOpacity: 50,
+    fontSize: 24,
     hasOutline: false,
     outlineColor: "#ffffff",
     outlineWidth: 1,
-    textPosition: "center"
+    textHierarchy: "primary",
+    fontWeight: "regular",
+    brandStyle: "arrastaai_minimal",
+    useIntelligentPositioning: true,
+    overlayIntensity: 0,
+    textCase: "none",
+    letterSpacing: 0.02
   };
 
   const effectiveTextStyles = textStyles || defaultTextStyles;

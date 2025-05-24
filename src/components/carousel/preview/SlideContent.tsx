@@ -1,25 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Slide } from "@/types/database.types";
-import { TextStyleOptions } from "@/types/carousel.types";
-import { 
-  ImageInfo, 
-  adaptContentToModel, 
-  analyzeImageBrightness, 
-  detectImageAspectRatio, 
-  determineOptimalTextPosition, 
-  determineFontFamily 
-} from "@/utils/layoutStyleUtils";
-import IntelligentTextRenderer from '../text/IntelligentTextRenderer';
-
-// Função para converter hex para rgb
-function hexToRgb(hex: string): { r: number; g: number; b: number } {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return result ? {
-    r: parseInt(result[1], 16),
-    g: parseInt(result[2], 16),
-    b: parseInt(result[3], 16)
-  } : { r: 0, g: 0, b: 0 };
-}
+import { TextStyleOptions, ARRASTAAI_COLORS } from "@/types/carousel.types";
+import { getArrastaAiTextStyles } from "@/utils/arrastaaiTemplates";
 
 interface SlideContentProps {
   slide: Slide;
@@ -36,47 +18,12 @@ const SlideContent: React.FC<SlideContentProps> = ({
   textStyles,
   onContentUpdate 
 }) => {
-  // Estados para armazenar informações da imagem e estilos otimizados
-  const [imageInfo, setImageInfo] = useState<ImageInfo>({
-    url: slide.image_url,
-    aspectRatio: null,
-    hasDarkAreas: true,
-    hasBrightAreas: false
-  });
-  
   const [adaptedContent, setAdaptedContent] = useState<string>(slide.content || "");
 
-  // Analisa a imagem ao carregar ou quando a imagem muda
   useEffect(() => {
-    const analyzeImage = async () => {
-      if (slide.image_url) {
-        const aspectRatio = await detectImageAspectRatio(slide.image_url);
-        const brightness = await analyzeImageBrightness(slide.image_url);
-        
-        setImageInfo({
-          url: slide.image_url,
-          aspectRatio,
-          hasDarkAreas: brightness.hasDarkAreas,
-          hasBrightAreas: brightness.hasBrightAreas
-        });
-        
-        // Adapta o conteúdo para o modelo específico
-        const newContent = adaptContentToModel(slide.content, layoutType);
-        setAdaptedContent(newContent);
-      } else {
-        setImageInfo({
-          url: null,
-          aspectRatio: null,
-          hasDarkAreas: true,
-          hasBrightAreas: false
-        });
-        setAdaptedContent(slide.content || "");
-      }
-    };
-    
-    analyzeImage();
-  }, [slide.image_url, layoutType, slide.content, index]);
-  
+    setAdaptedContent(slide.content || "");
+  }, [slide.content, layoutType, index]);
+
   // Verificar se é um layout de livro
   const isBookLayout = ['fiction_cover', 'nonfiction_cover', 'memoir', 'self_help', 'academic', 'thriller'].includes(layoutType);
   
@@ -209,7 +156,46 @@ const SlideContent: React.FC<SlideContentProps> = ({
     return renderBookContent();
   }
 
-  // Para layouts regulares, usar o sistema inteligente da Predial Casa Nova
+  // Sistema ArrastaAí - renderização simplificada
+  const getPositionClass = () => {
+    switch (textStyles.textPosition) {
+      case "top":
+        return "items-start justify-start pt-6";
+      case "center":
+        return "items-center justify-center";
+      case "bottom":
+        return "items-end justify-end pb-6";
+      default:
+        return "items-center justify-center";
+    }
+  };
+
+  const getTextSize = () => {
+    switch (textStyles.textSize) {
+      case "large":
+        return "text-3xl";
+      case "medium":
+        return "text-xl";
+      case "small":
+        return "text-lg";
+      default:
+        return "text-xl";
+    }
+  };
+
+  const getTextTransform = () => {
+    switch (textStyles.textCase) {
+      case "uppercase":
+        return "uppercase";
+      case "lowercase":
+        return "lowercase";
+      case "capitalize":
+        return "capitalize";
+      default:
+        return "none";
+    }
+  };
+
   return (
     <>
       {slide.image_url && (
@@ -220,18 +206,34 @@ const SlideContent: React.FC<SlideContentProps> = ({
         />
       )}
       
+      {/* Overlay se necessário */}
+      {textStyles.hasBackground && (
+        <div 
+          className="absolute inset-0"
+          style={{
+            backgroundColor: textStyles.backgroundColor,
+            opacity: (textStyles.backgroundOpacity || 60) / 100
+          }}
+        />
+      )}
+      
       {(adaptedContent && adaptedContent.trim() !== "") && (
-        <div className="relative z-10 w-full h-full">
-          <IntelligentTextRenderer
-            text={adaptedContent}
-            textStyles={textStyles}
-            imageAnalysis={{
-              hasDarkAreas: imageInfo.hasDarkAreas,
-              hasBrightAreas: imageInfo.hasBrightAreas,
-              aspectRatio: imageInfo.aspectRatio
-            }}
-            onTextChange={handleTextUpdate}
-          />
+        <div className={`relative z-10 w-full h-full flex flex-col ${getPositionClass()}`}>
+          <div className="text-center max-w-[90%] mx-auto px-4">
+            <div 
+              className={`font-bold ${getTextSize()}`}
+              style={{
+                color: textStyles.textColor,
+                textTransform: getTextTransform(),
+                fontWeight: textStyles.fontWeight === "bold" ? "700" : 
+                           textStyles.fontWeight === "extra-bold" ? "800" : "400",
+                textShadow: "0 2px 4px rgba(0,0,0,0.5)",
+                whiteSpace: "pre-wrap"
+              }}
+            >
+              {adaptedContent}
+            </div>
+          </div>
         </div>
       )}
     </>

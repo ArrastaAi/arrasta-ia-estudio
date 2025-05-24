@@ -17,11 +17,24 @@ const CTAElement: React.FC<CTAElementProps> = ({
   variant = "button", 
   className = "" 
 }) => {
+  const getTextTransform = (textCase: string): React.CSSProperties['textTransform'] => {
+    switch (textCase) {
+      case "uppercase":
+        return "uppercase";
+      case "lowercase":
+        return "lowercase";
+      case "capitalize":
+        return "capitalize";
+      default:
+        return "none";
+    }
+  };
+
   const baseStyle: React.CSSProperties = {
     fontWeight: style.fontWeight,
     fontSize: `${style.fontSize}px`,
     color: style.textColor,
-    textTransform: style.textCase,
+    textTransform: getTextTransform(style.textCase),
     letterSpacing: `${style.letterSpacing}em`,
     lineHeight: 1.3
   };
@@ -32,9 +45,9 @@ const CTAElement: React.FC<CTAElementProps> = ({
         className={`px-6 py-3 rounded-md transition-all duration-200 hover:scale-105 hover:shadow-lg ${className}`}
         style={{
           ...baseStyle,
-          backgroundColor: style.textColor === "#FF6B35" ? "#FF6B35" : "transparent",
+          backgroundColor: style.textColor === "#A259FF" ? "#A259FF" : "transparent",
           border: `2px solid ${style.textColor}`,
-          color: style.textColor === "#FF6B35" ? "#FFFFFF" : style.textColor
+          color: style.textColor === "#A259FF" ? "#FFFFFF" : style.textColor
         }}
         onClick={onClick}
       >

@@ -1,23 +1,27 @@
 
 export interface TextStyleOptions {
+  // Propriedades essenciais do Instagram Stories
+  textSize: "small" | "medium" | "large";
+  textPosition: "top" | "center" | "bottom";
+  textStyle: "impact" | "elegant" | "cta" | "minimal";
+  textColor: string;
+  hasBackground: boolean;
+  backgroundColor?: string;
+  backgroundOpacity?: number;
+  
+  // Propriedades legadas (manter compatibilidade)
   alignment: "left" | "center" | "right";
   fontFamily: "helvetica" | "fixture" | "serif" | "mono";
   fontSize: number;
-  hasBackground: boolean;
-  backgroundColor: string;
-  backgroundOpacity: number;
   hasOutline: boolean;
   outlineColor: string;
   outlineWidth: number;
-  textPosition: "top" | "center" | "bottom";
-  // Novas propriedades para sistema Predial Casa Nova
   textHierarchy: "primary" | "secondary" | "cta" | "brand";
   fontWeight: "light" | "regular" | "bold" | "extra-bold";
-  textColor: string;
-  brandStyle: "predial_casa_nova" | "corporate_orange" | "overlay_text" | "cta_focused" | "custom";
+  brandStyle: "arrastaai_dark" | "arrastaai_purple" | "arrastaai_minimal" | "custom";
   useIntelligentPositioning: boolean;
   overlayIntensity: number;
-  textCase: "normal" | "uppercase" | "lowercase";
+  textCase: "none" | "uppercase" | "lowercase" | "capitalize";
   letterSpacing: number;
 }
 
@@ -25,28 +29,32 @@ export interface TextHierarchyStyle {
   fontWeight: string;
   fontSize: number;
   textColor: string;
-  textCase: "normal" | "uppercase" | "lowercase";
+  textCase: "none" | "uppercase" | "lowercase" | "capitalize";
   letterSpacing: number;
   marginBottom: number;
 }
 
-export interface BrandTemplate {
+export interface ArrastaAiTemplate {
   id: string;
   name: string;
   description: string;
-  primaryColor: string;
-  secondaryColor: string;
-  backgroundColor: string;
-  textColor: string;
-  accentColor: string;
-  fontWeights: {
+  preview: string;
+  colors: {
     primary: string;
     secondary: string;
-    cta: string;
+    background: string;
+    text: string;
   };
-  spacing: {
-    tight: number;
-    normal: number;
-    wide: number;
-  };
+  textStyle: Partial<TextStyleOptions>;
 }
+
+// Paleta de cores ArrastaAí
+export const ARRASTAAI_COLORS = {
+  black: "#000000",
+  darkGray: "#121212", 
+  white: "#FFFFFF",
+  purple: "#A259FF",
+  blue: "#5B8EFF",
+  magenta: "#B16EFF",
+  lightGray: "#F5F5F5"
+};
