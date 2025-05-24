@@ -123,7 +123,6 @@ const FirebaseAITextGenerator = ({
         <GenerateButton 
           loading={loading} 
           onClick={handleGenerateText}
-          slideCount={validSlideCount}
         />
         
         {parsedTexts.length > 0 && (
@@ -144,7 +143,7 @@ const FirebaseAITextGenerator = ({
         
         {hasGeneratedTexts && (
           <Card className="bg-gray-750 border-gray-600 p-4 mt-4">
-            <AgentInfoDisplay agent={activeAgent} formData={formData} slideCount={validSlideCount} />
+            <AgentInfoDisplay agent={activeAgent} formData={formData} />
             <GeneratedTexts 
               parsedTexts={parsedTexts.slice(0, MAX_SLIDES_ALLOWED)} 
               handleApply={handleApply} 

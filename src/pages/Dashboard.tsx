@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Plus, FileEdit, ArrowRight, Trash2, Bug, Database, RefreshCw } from "lucide-react";
+import { Plus, FileEdit, ArrowRight, Trash2, Bug, Database, RefreshCw, Layout, Calendar } from "lucide-react";
 import MainLayout from "@/components/layout/MainLayout";
 import { Carousel } from "@/types/database.types";
 import { useToast } from "@/hooks/use-toast";
@@ -12,7 +12,7 @@ import { useFirebaseAuth } from "@/contexts/FirebaseAuthContext";
 import { db, firestore } from "@/integrations/firebase/client";
 import { collection, query, where, getDocs, orderBy, deleteDoc, doc } from "firebase/firestore";
 import { formatDistanceToNow } from "date-fns";
-import ptBR from "date-fns/locale/pt-BR";
+import { ptBR } from "date-fns/locale/pt-BR";
 
 const Dashboard = () => {
   const { user } = useFirebaseAuth();
