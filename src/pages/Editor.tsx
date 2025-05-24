@@ -85,8 +85,7 @@ const Editor = () => {
           toast({
             title: "Carrossel não encontrado",
             description: "Este carrossel não existe ou você não tem permissão para acessá-lo.",
-            variant: "destructive",
-            autoShow: true
+            variant: "destructive"
           });
           navigate("/dashboard");
           return;
@@ -160,8 +159,7 @@ const Editor = () => {
         toast({
           title: "Erro",
           description: `Erro ao buscar carrossel: ${error.message || "Erro desconhecido"}`,
-          variant: "destructive",
-          autoShow: true
+          variant: "destructive"
         });
       } finally {
         setLoading(false);
@@ -271,7 +269,7 @@ const Editor = () => {
 
       toast({
         title: "Carrossel salvo",
-        description: `Carrossel e ${slidesUpdated} slides salvos com sucesso.`,
+        description: `Carrossel e ${slidesUpdated} slides salvos com sucesso.`
       });
     } catch (error) {
       console.error("[Editor] Erro ao salvar carrossel:", {
@@ -290,7 +288,7 @@ const Editor = () => {
       toast({
         title: "Erro ao salvar",
         description: `Não foi possível salvar o carrossel: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setSaving(false);
@@ -368,14 +366,14 @@ const Editor = () => {
 
       toast({
         title: "Textos aplicados",
-        description: `${texts.length} textos foram aplicados aos slides.`,
+        description: `${texts.length} textos foram aplicados aos slides.`
       });
     } catch (error) {
       console.error("Erro ao aplicar textos:", error);
       toast({
         title: "Erro",
         description: "Não foi possível aplicar os textos gerados.",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
@@ -404,14 +402,14 @@ const Editor = () => {
 
       toast({
         title: "Imagens aplicadas",
-        description: `${Math.min(imageUrls.length, updatedSlides.length)} imagens foram aplicadas aos slides.`,
+        description: `${Math.min(imageUrls.length, updatedSlides.length)} imagens foram aplicadas aos slides.`
       });
     } catch (error) {
       console.error("Erro ao aplicar imagens:", error);
       toast({
         title: "Erro",
         description: "Não foi possível aplicar as imagens.",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
@@ -436,7 +434,7 @@ const Editor = () => {
 
       toast({
         title: "Imagem aplicada",
-        description: `Imagem aplicada ao slide ${slideIndex + 1}.`,
+        description: `Imagem aplicada ao slide ${slideIndex + 1}.`
       });
     } catch (error) {
       console.error("Erro ao aplicar imagem:", error);

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -36,16 +37,15 @@ const Dashboard = () => {
       });
 
       const carouselsCollectionRef = collection(db, "carousels");
+      // Usar apenas user_id para evitar erro de índice
       const carouselsQuery = query(
         carouselsCollectionRef,
-        where("user_id", "==", user.uid),
-        orderBy("created_at", "desc")
+        where("user_id", "==", user.uid)
       );
 
       console.log('[Dashboard] Executando query:', {
         collection: 'carousels',
-        where: `user_id == ${user.uid}`,
-        orderBy: 'created_at desc'
+        where: `user_id == ${user.uid}`
       });
 
       const carouselsSnapshot = await getDocs(carouselsQuery);
@@ -71,6 +71,13 @@ const Dashboard = () => {
           ...data,
           layout_type: data.layout_type || "instagram_rect",
         } as Carousel;
+      });
+
+      // Ordenar no cliente por created_at ou updated_at
+      carouselsList.sort((a, b) => {
+        const dateA = new Date(a.updated_at || a.created_at || 0).getTime();
+        const dateB = new Date(b.updated_at || b.created_at || 0).getTime();
+        return dateB - dateA;
       });
 
       console.log('[Dashboard] Carrosséis processados:', {
@@ -106,8 +113,7 @@ const Dashboard = () => {
       toast({
         title: "Erro ao carregar carrosséis",
         description: `Detalhes: ${error.message}`,
-        variant: "destructive",
-        autoShow: true
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
@@ -130,8 +136,7 @@ const Dashboard = () => {
       setCarousels(carousels.filter((carousel) => carousel.id !== id));
       
       toast({
-        title: "Carrossel excluído com sucesso",
-        autoShow: true
+        title: "Carrossel excluído com sucesso"
       });
     } catch (error: any) {
       console.error('[Dashboard] Erro ao excluir carrossel:', {
@@ -143,8 +148,7 @@ const Dashboard = () => {
       toast({
         title: "Erro ao excluir carrossel",
         description: error.message,
-        variant: "destructive",
-        autoShow: true
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
