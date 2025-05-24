@@ -1,8 +1,6 @@
 
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { generateAgentContent } from '@/firebase/functions/generateAgentContent';
-import { useFirebaseAPIKeyManager } from '@/hooks/useFirebaseAPIKeyManager';
 
 interface GenerateTextParams {
   prompt: string;
@@ -15,39 +13,36 @@ interface GenerateTextParams {
 export const useTextGeneration = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const { getBestAvailableKey, incrementKeyUsage } = useFirebaseAPIKeyManager();
 
   const generateTextContent = async (params: GenerateTextParams): Promise<string | null> => {
     setLoading(true);
     try {
-      const apiKey = getBestAvailableKey();
-      if (!apiKey) {
-        toast({
-          title: "Chave API necessária",
-          description: "Configure uma chave do Google Gemini nas configurações",
-          variant: "destructive"
-        });
-        return null;
-      }
+      console.log("Gerando texto individual com Supabase Edge Function:", params);
 
-      const result = await generateAgentContent({
-        agent: "yuri",
-        prompt: params.prompt,
-        topic: params.prompt,
-        audience: params.targetAudience || "Público geral",
-        goal: "educar",
-        apiKey,
-        slideCount: 1,
-        content: "",
-        format: {
-          slideCounts: 1,
-          wordLimits: [25]
+      const response = await fetch('https://kjoevpxfgujzaekqfzyn.supabase.co/functions/v1/generate-ai-content', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtqb2V2cHhmZ3VqemFla3FmenluIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc3MzcxMjcsImV4cCI6MjA2MzMxMzEyN30.L945UdIgiGCowU3ueQNt-Wr8KhdZb6yPNZ4mG9X6L40`
         },
-        maxSlidesAllowed: 1
+        body: JSON.stringify({
+          agent: "yuri",
+          prompt: params.prompt,
+          topic: params.prompt,
+          audience: params.targetAudience || "Público geral",
+          goal: "educar",
+          content: "",
+          slideCount: 1
+        })
       });
 
+      if (!response.ok) {
+        throw new Error(`Erro na geração: ${response.status}`);
+      }
+
+      const result = await response.json();
+
       if (result.success && result.parsedTexts && result.parsedTexts.length > 0) {
-        await incrementKeyUsage(apiKey);
         toast({
           title: "Texto gerado com sucesso!",
           description: "O conteúdo foi gerado e pode ser editado conforme necessário."

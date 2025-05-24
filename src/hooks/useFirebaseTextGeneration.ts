@@ -30,7 +30,6 @@ export const useFirebaseTextGeneration = (onApplyTexts: (texts: GeneratedText[])
   const [rawGeneratedText, setRawGeneratedText] = useState("");
   const [parsedTexts, setParsedTexts] = useState<GeneratedText[]>([]);
   const [activeAgent, setActiveAgent] = useState("carousel");
-  const { getBestAvailableKey, incrementKeyUsage } = useFirebaseAPIKeyManager();
 
   // Form data with improved defaults
   const [formData, setFormData] = useState<FormData>({
@@ -97,28 +96,32 @@ export const useFirebaseTextGeneration = (onApplyTexts: (texts: GeneratedText[])
     }
   };
 
-  const callFirebaseGenerateFunction = async (requestData: any) => {
+  const callSupabaseEdgeFunction = async (requestData: any) => {
     try {
-      // Usar chave API do Firebase ou fallback
-      const apiKey = getBestAvailableKey() || "fallback-key";
+      console.log("Chamando Edge Function do Supabase com dados:", requestData);
       
-      // Simular chamada para Firebase Functions ou API direta
-      const response = await fetch('/api/generate-content', {
+      // Chamar diretamente a Edge Function do Supabase
+      const response = await fetch('https://kjoevpxfgujzaekqfzyn.supabase.co/functions/v1/generate-ai-content', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
+          'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtqb2V2cHhmZ3VqemFla3FmenluIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc3MzcxMjcsImV4cCI6MjA2MzMxMzEyN30.L945UdIgiGCowU3ueQNt-Wr8KhdZb6yPNZ4mG9X6L40`
         },
         body: JSON.stringify(requestData)
       });
 
       if (!response.ok) {
-        throw new Error('Erro na geração de conteúdo');
+        const errorText = await response.text();
+        console.error("Erro na resposta da Edge Function:", errorText);
+        throw new Error(`Erro na geração de conteúdo: ${response.status}`);
       }
 
-      return await response.json();
+      const data = await response.json();
+      console.log("Resposta da Edge Function:", data);
+
+      return data;
     } catch (error) {
-      console.error('Erro ao chamar função de geração:', error);
+      console.error('Erro ao chamar Edge Function do Supabase:', error);
       
       // Fallback para texto simulado baseado no agente
       const simulatedTexts = generateFallbackTexts(requestData.agent, requestData.topic);
@@ -188,8 +191,8 @@ export const useFirebaseTextGeneration = (onApplyTexts: (texts: GeneratedText[])
       
       console.log("Gerando conteúdo com:", { agent: activeAgent, topic: formData.topic, slideCount });
       
-      // Chamar função de geração
-      const data = await callFirebaseGenerateFunction({
+      // Chamar Edge Function do Supabase
+      const data = await callSupabaseEdgeFunction({
         agent: activeAgent,
         topic: formData.topic,
         audience: formData.audience,
@@ -212,7 +215,7 @@ export const useFirebaseTextGeneration = (onApplyTexts: (texts: GeneratedText[])
         
         setParsedTexts(limitedParsedTexts);
         
-        // Salvar no Firestore
+        // Salvar no Firebase Firestore
         await saveGeneratedTextToFirestore(limitedParsedTexts, activeAgent);
         
         toast({
