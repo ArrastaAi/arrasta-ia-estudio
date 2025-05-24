@@ -25,6 +25,11 @@ export const useUserCarousels = () => {
     const fetchUserCarousels = async () => {
       if (!user) {
         console.log('[useUserCarousels] Usuário não autenticado');
+        setCarousels([]);
+        setDebugInfo({
+          user_authenticated: false,
+          last_search: new Date().toISOString()
+        });
         return;
       }
 
@@ -37,17 +42,16 @@ export const useUserCarousels = () => {
         });
 
         const carouselsRef = collection(db, 'carousels');
+        // Mudança: usar apenas user_id para evitar problema de índice
         const q = query(
           carouselsRef,
           where('user_id', '==', user.uid),
-          orderBy('updated_at', 'desc'),
           limit(10)
         );
 
         console.log('[useUserCarousels] Query configurada:', {
           collection: 'carousels',
           filter: `user_id == ${user.uid}`,
-          orderBy: 'updated_at desc',
           limit: 10
         });
 
@@ -66,7 +70,8 @@ export const useUserCarousels = () => {
             user_id: user.uid,
             query_executed: true,
             docs_found: 0,
-            last_search: new Date().toISOString()
+            last_search: new Date().toISOString(),
+            index_issue: false
           });
           return;
         }
@@ -75,22 +80,32 @@ export const useUserCarousels = () => {
           const data = doc.data();
           console.log('[useUserCarousels] Documento encontrado:', {
             id: doc.id,
-            data: data,
-            user_id: data.user_id
+            title: data.title,
+            user_id: data.user_id,
+            created_at: data.created_at,
+            updated_at: data.updated_at
           });
           
           return {
             id: doc.id,
-            ...data
+            title: data.title || 'Carrossel sem título',
+            description: data.description || null,
+            layout_type: data.layout_type || 'feed_square',
+            created_at: data.created_at || new Date().toISOString(),
+            updated_at: data.updated_at || new Date().toISOString()
           } as UserCarousel;
         });
+
+        // Ordenar no cliente por updated_at
+        carouselsData.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
 
         console.log('[useUserCarousels] Carrosséis processados:', {
           count: carouselsData.length,
           carousels: carouselsData.map(c => ({
             id: c.id,
             title: c.title,
-            layout_type: c.layout_type
+            layout_type: c.layout_type,
+            updated_at: c.updated_at
           }))
         });
 
@@ -100,14 +115,16 @@ export const useUserCarousels = () => {
           query_executed: true,
           docs_found: carouselsData.length,
           last_search: new Date().toISOString(),
-          carousels_ids: carouselsData.map(c => c.id)
+          carousels_ids: carouselsData.map(c => c.id),
+          index_issue: false
         });
 
-        toast({
-          title: "Carrosséis carregados",
-          description: `${carouselsData.length} carrosséis encontrados`,
-          autoShow: true
-        });
+        if (carouselsData.length > 0) {
+          toast({
+            title: "Carrosséis carregados",
+            description: `${carouselsData.length} carrosséis encontrados`,
+          });
+        }
 
       } catch (error) {
         console.error('[useUserCarousels] Erro detalhado ao carregar carrosséis:', {
@@ -118,17 +135,21 @@ export const useUserCarousels = () => {
           timestamp: new Date().toISOString()
         });
         
+        const isIndexError = error instanceof Error && error.message.includes('index');
+        
         toast({
           title: "Erro ao carregar carrosséis",
-          description: `Detalhes: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
+          description: isIndexError 
+            ? "Índice do Firebase precisa ser criado. Verifique o console para detalhes."
+            : `Detalhes: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
           variant: "destructive",
-          autoShow: true
         });
 
         setDebugInfo({
           user_id: user.uid,
           query_executed: false,
           error: error instanceof Error ? error.message : 'Erro desconhecido',
+          index_issue: isIndexError,
           last_search: new Date().toISOString()
         });
       } finally {

@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useUserCarousels } from "@/hooks/useUserCarousels";
 import { useNavigate } from "react-router-dom";
-import { Eye, Calendar, Layout, Bug, Database } from "lucide-react";
+import { Eye, Calendar, Layout, Bug, Database, AlertTriangle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -56,6 +56,12 @@ const UserCarouselsPreview: React.FC = () => {
           <Badge variant="secondary" className="bg-green-500/20 text-green-300">
             {carousels.length} encontrados
           </Badge>
+          {debugInfo?.index_issue && (
+            <Badge variant="destructive" className="text-xs">
+              <AlertTriangle className="h-3 w-3 mr-1" />
+              Índice necessário
+            </Badge>
+          )}
           {debugInfo && (
             <Button
               variant="ghost"
@@ -83,6 +89,11 @@ const UserCarouselsPreview: React.FC = () => {
             {debugInfo.error && (
               <div className="text-red-400">Erro: {debugInfo.error}</div>
             )}
+            {debugInfo.index_issue && (
+              <div className="text-yellow-400">
+                ⚠️ Índice do Firebase necessário para ordenação
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -91,11 +102,19 @@ const UserCarouselsPreview: React.FC = () => {
         <div className="text-center py-6">
           <div className="text-gray-400 mb-2">
             <Layout className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            Nenhum carrossel criado ainda
+            {debugInfo?.error ? 
+              "Erro ao carregar carrosséis" : 
+              "Nenhum carrossel criado ainda"
+            }
           </div>
-          {debugInfo?.query_executed && (
+          {debugInfo?.query_executed && !debugInfo?.error && (
             <p className="text-xs text-gray-500">
               Query executada com sucesso, mas nenhum resultado encontrado
+            </p>
+          )}
+          {debugInfo?.index_issue && (
+            <p className="text-xs text-yellow-500">
+              Criar índice no Firebase Console para resolver este problema
             </p>
           )}
         </div>

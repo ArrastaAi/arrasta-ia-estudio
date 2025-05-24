@@ -15,7 +15,6 @@ type ToasterToast = ToastProps & {
   description?: React.ReactNode
   action?: ToastActionElement
   context?: string
-  autoShow?: boolean
 }
 
 const actionTypes = {
@@ -78,11 +77,6 @@ const addToRemoveQueue = (toastId: string) => {
 export const reducer = (state: State, action: Action): State => {
   switch (action.type) {
     case "ADD_TOAST": {
-      // Mudança aqui: por padrão autoShow é true, não false
-      if (action.toast.autoShow === false) {
-        return state;
-      }
-      
       if (action.toast.context && activeContexts.has(action.toast.context)) {
         return state
       }
@@ -181,16 +175,12 @@ function toast({ ...props }: Toast) {
     })
   const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id })
 
-  // Mudança aqui: por padrão autoShow é true
-  const autoShow = props.autoShow !== false
-  
   dispatch({
     type: "ADD_TOAST",
     toast: {
       ...props,
       id,
-      open: autoShow,
-      autoShow,
+      open: true,
       onOpenChange: (open) => {
         if (!open) dismiss()
       },

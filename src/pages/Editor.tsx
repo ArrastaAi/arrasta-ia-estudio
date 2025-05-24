@@ -188,38 +188,62 @@ const Editor = () => {
         timestamp: new Date().toISOString()
       });
       
-      // Salvar carrossel principal
+      // Salvar carrossel principal - filtrar campos undefined
       const carouselRef = doc(db, "carousels", carouselData.id);
-      const carouselUpdateData = {
-        title: carouselData.title,
-        description: carouselData.description,
-        layout_type: carouselData.layout_type,
-        narrative_style: carouselData.narrative_style,
-        content: carouselData.content,
+      const carouselUpdateData: any = {
         updated_at: new Date().toISOString()
       };
+
+      // Adicionar apenas campos que não são undefined
+      if (carouselData.title !== undefined) {
+        carouselUpdateData.title = carouselData.title;
+      }
+      if (carouselData.description !== undefined) {
+        carouselUpdateData.description = carouselData.description;
+      }
+      if (carouselData.layout_type !== undefined) {
+        carouselUpdateData.layout_type = carouselData.layout_type;
+      }
+      if (carouselData.narrative_style !== undefined) {
+        carouselUpdateData.narrative_style = carouselData.narrative_style;
+      }
+      if (carouselData.content !== undefined) {
+        carouselUpdateData.content = carouselData.content;
+      }
 
       console.log('[Editor] Salvando dados do carrossel:', carouselUpdateData);
       await updateDoc(carouselRef, carouselUpdateData);
 
-      // Salvar slides
+      // Salvar slides - também filtrar campos undefined
       let slidesUpdated = 0;
       for (const slide of carouselData.slides) {
         try {
           const slideRef = doc(db, "carousels", carouselData.id, "slides", slide.id);
-          const slideUpdateData = {
-            content: slide.content,
-            image_url: slide.image_url,
-            background_type: slide.background_type,
-            background_value: slide.background_value,
-            effects: slide.effects,
+          const slideUpdateData: any = {
             updated_at: new Date().toISOString()
           };
+
+          // Adicionar apenas campos que não são undefined
+          if (slide.content !== undefined) {
+            slideUpdateData.content = slide.content;
+          }
+          if (slide.image_url !== undefined) {
+            slideUpdateData.image_url = slide.image_url;
+          }
+          if (slide.background_type !== undefined) {
+            slideUpdateData.background_type = slide.background_type;
+          }
+          if (slide.background_value !== undefined) {
+            slideUpdateData.background_value = slide.background_value;
+          }
+          if (slide.effects !== undefined) {
+            slideUpdateData.effects = slide.effects;
+          }
 
           console.log('[Editor] Salvando slide:', {
             slide_id: slide.id,
             order_index: slide.order_index,
-            has_content: !!slide.content
+            fields_to_update: Object.keys(slideUpdateData)
           });
 
           await updateDoc(slideRef, slideUpdateData);
@@ -248,7 +272,6 @@ const Editor = () => {
       toast({
         title: "Carrossel salvo",
         description: `Carrossel e ${slidesUpdated} slides salvos com sucesso.`,
-        autoShow: true
       });
     } catch (error) {
       console.error("[Editor] Erro ao salvar carrossel:", {
@@ -268,7 +291,6 @@ const Editor = () => {
         title: "Erro ao salvar",
         description: `Não foi possível salvar o carrossel: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
         variant: "destructive",
-        autoShow: true
       });
     } finally {
       setSaving(false);
