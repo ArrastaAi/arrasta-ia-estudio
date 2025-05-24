@@ -3,7 +3,10 @@ import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { parseRawText } from "@/components/carousel/ai-text-generator/textParser";
 import { useFirebaseAPIKeyManager } from "@/hooks/useFirebaseAPIKeyManager";
-import { generateAgentContent } from "@/firebase/functions/generateAgentContent";
+import { supabase } from "@/integrations/supabase/client";
+import { useFirebaseAuth } from "@/contexts/FirebaseAuthContext";
+import { db } from "@/integrations/firebase/client";
+import { doc, setDoc, updateDoc, collection, addDoc } from "firebase/firestore";
 
 interface GeneratedText {
   id: number;
@@ -18,44 +21,16 @@ interface FormData {
   content: string;
 }
 
-// Configuração padrão para formatação de textos (limitado a 9 slides)
-const DEFAULT_WORD_LIMITS = [
-  15, // Slide 1: Hook forte, atrair atenção
-  25, // Slide 2: Contexto do problema
-  35, // Slide 3: Aprofundamento
-  40, // Slide 4: Solução principal
-  35, // Slide 5: Prova ou exemplo
-  20, // Slide 6: CTA / Conclusão
-  30, // Slide 7: Expansão (se necessário)
-  30, // Slide 8: Expansão (se necessário)
-  25  // Slide 9: Conclusão (se necessário)
-];
-
 // Número máximo de slides permitido em toda a aplicação
 const MAX_SLIDES_ALLOWED = 9;
 
-// Chave API padrão do Supabase (será usada como fallback)
-const SUPABASE_GEMINI_KEY = "AIzaSyDxQs4h5r7vYpK9JQqF8Lx2Ns3mPtR6VqB";
-
-async function getAvailableAPIKey(getBestAvailableKey: () => string | null): Promise<string | null> {
-  // Primeiro: tentar chaves do Firebase
-  const firebaseKey = getBestAvailableKey();
-  if (firebaseKey) {
-    console.log("Usando chave do Firebase");
-    return firebaseKey;
-  }
-
-  // Segundo: usar chave do Supabase como fallback
-  console.log("Usando chave padrão do sistema");
-  return SUPABASE_GEMINI_KEY;
-}
-
 export const useFirebaseTextGeneration = (onApplyTexts: (texts: GeneratedText[]) => void) => {
   const { toast } = useToast();
+  const { user } = useFirebaseAuth();
   const [loading, setLoading] = useState(false);
   const [rawGeneratedText, setRawGeneratedText] = useState("");
   const [parsedTexts, setParsedTexts] = useState<GeneratedText[]>([]);
-  const [activeAgent, setActiveAgent] = useState("yuri");
+  const [activeAgent, setActiveAgent] = useState("carousel");
   const { getBestAvailableKey, incrementKeyUsage } = useFirebaseAPIKeyManager();
 
   // Form data with improved defaults
@@ -73,11 +48,9 @@ export const useFirebaseTextGeneration = (onApplyTexts: (texts: GeneratedText[])
     if (savedTexts) {
       try {
         const parsedData = JSON.parse(savedTexts);
-        // Garantir que nunca excedemos o limite máximo de slides permitido
         const limitedData = parsedData.slice(0, MAX_SLIDES_ALLOWED);
         setParsedTexts(limitedData);
         
-        // Also restore raw text if available
         const savedRawText = localStorage.getItem("generatedRawText");
         if (savedRawText) {
           setRawGeneratedText(savedRawText);
@@ -106,6 +79,25 @@ export const useFirebaseTextGeneration = (onApplyTexts: (texts: GeneratedText[])
     }));
   };
 
+  const saveGeneratedTextToFirestore = async (texts: GeneratedText[], agent: string) => {
+    if (!user) return;
+
+    try {
+      const generatedTextRef = await addDoc(collection(db, "generated_texts"), {
+        user_id: user.uid,
+        agent: agent,
+        texts: texts,
+        form_data: formData,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
+      
+      console.log("Texto gerado salvo no Firestore:", generatedTextRef.id);
+    } catch (error) {
+      console.error("Erro ao salvar texto gerado:", error);
+    }
+  };
+
   const handleGenerateText = async () => {
     try {
       setLoading(true);
@@ -115,6 +107,10 @@ export const useFirebaseTextGeneration = (onApplyTexts: (texts: GeneratedText[])
       });
 
       // Validating input data
+      if (activeAgent === 'carousel' && !formData.topic) {
+        throw new Error("Por favor, informe o tema do carrossel");
+      }
+      
       if (activeAgent === 'yuri' && !formData.topic) {
         throw new Error("Por favor, informe o tema do carrossel");
       }
@@ -123,112 +119,74 @@ export const useFirebaseTextGeneration = (onApplyTexts: (texts: GeneratedText[])
         throw new Error("Por favor, informe o conteúdo a ser formatado");
       }
       
-      // Obter a melhor chave disponível (com fallback automático)
-      const apiKey = await getAvailableAPIKey(getBestAvailableKey);
-      if (!apiKey) {
-        throw new Error("Nenhuma chave API disponível no momento. Tente novamente mais tarde.");
-      }
-      
       // Determinar a contagem de slides com o limite máximo aplicado
       const slideCount = Math.min(
-        activeAgent === 'yuri' ? 6 : Math.max(3, Math.ceil(formData.content.length / 250)),
+        activeAgent === 'carousel' ? 6 : 
+        activeAgent === 'yuri' ? 6 : 
+        Math.max(3, Math.ceil(formData.content.length / 250)),
         MAX_SLIDES_ALLOWED
       );
       
-      // Configurar limites de palavras específicos para cada slide
-      const wordLimits = [...DEFAULT_WORD_LIMITS];
+      console.log("Chamando Edge Function para geração de conteúdo");
       
-      // Ajustar array de limites se a contagem de slides for diferente do padrão
-      while (wordLimits.length < slideCount) {
-        wordLimits.push(30); // Limite padrão para slides adicionais
-      }
-      
-      // Verificar se estamos apenas corrigindo ortografia
-      const onlyCorrectSpelling = activeAgent === 'formatter' && formData.prompt?.toLowerCase().includes('corrigir');
-      
-      // Log para debugging
-      console.log("Enviando solicitação para generate-agent-content:", {
-        agent: activeAgent,
-        slideCount: slideCount,
-        hasApiKey: !!apiKey
-      });
-      
-      // Chamar a função do Firebase
-      const data = await generateAgentContent({
-        agent: activeAgent,
-        prompt: formData.prompt,
-        topic: formData.topic,
-        audience: formData.audience,
-        goal: formData.goal,
-        content: formData.content,
-        apiKey: apiKey,
-        slideCount: slideCount,
-        format: {
-          slideCounts: slideCount,
-          wordLimits: wordLimits.slice(0, slideCount)
-        },
-        onlyCorrectSpelling,
-        maxSlidesAllowed: MAX_SLIDES_ALLOWED
+      // Chamar a Edge Function
+      const { data, error } = await supabase.functions.invoke('generate-ai-content', {
+        body: {
+          agent: activeAgent,
+          topic: formData.topic,
+          audience: formData.audience,
+          goal: formData.goal,
+          content: formData.content,
+          prompt: formData.prompt,
+          slideCount: slideCount
+        }
       });
 
-      console.log("Resposta da função generate-agent-content:", data);
+      if (error) {
+        console.error("Erro na Edge Function:", error);
+        throw new Error(error.message || "Erro ao gerar conteúdo");
+      }
+
+      console.log("Resposta da Edge Function:", data);
 
       if (!data.success) {
         throw new Error(data.error || "Erro ao gerar conteúdo");
       }
       
-      if (data.success) {
-        // Incrementar o uso da chave API apenas se for do Firebase
-        const firebaseKey = getBestAvailableKey();
-        if (apiKey === firebaseKey && firebaseKey) {
-          await incrementKeyUsage(firebaseKey);
-        }
+      setRawGeneratedText(data.generatedText || "");
+      
+      if (data.parsedTexts && Array.isArray(data.parsedTexts) && data.parsedTexts.length > 0) {
+        const limitedParsedTexts = data.parsedTexts.slice(0, MAX_SLIDES_ALLOWED);
         
-        setRawGeneratedText(data.generatedText || "");
+        setParsedTexts(limitedParsedTexts);
         
-        if (data.parsedTexts && Array.isArray(data.parsedTexts) && data.parsedTexts.length > 0) {
-          // Limitar o número de slides ao máximo permitido
-          const limitedParsedTexts = data.parsedTexts.slice(0, MAX_SLIDES_ALLOWED);
+        // Salvar no Firestore
+        await saveGeneratedTextToFirestore(limitedParsedTexts, activeAgent);
+        
+        toast({
+          title: "Sucesso!",
+          description: `${limitedParsedTexts.length} slides foram gerados com sucesso.`,
+        });
+      } else {
+        // Como fallback, tentamos analisar o texto bruto
+        try {
+          const textosParsedManualmente = parseRawText(data.generatedText || "");
+          const limitedTexts = textosParsedManualmente.slice(0, MAX_SLIDES_ALLOWED);
           
-          // Verificar e validar a contagem de palavras para cada slide
-          const validatedTexts = limitedParsedTexts.map((text: GeneratedText, index: number) => {
-            const targetWordCount = wordLimits[index];
-            const actualWordCount = text.text.split(/\s+/).filter((w: string) => w.length > 0).length;
-            
-            console.log(`Slide ${text.id}: ${actualWordCount} palavras (alvo: ${targetWordCount})`);
-            
-            return text;
-          });
-          
-          setParsedTexts(validatedTexts);
-          toast({
-            title: "Sucesso!",
-            description: `${validatedTexts.length} slides foram gerados com sucesso.`,
-          });
-        } else {
-          console.error("Textos parseados ausentes ou inválidos:", data.parsedTexts);
-          // Como fallback, tentamos analisar o texto bruto
-          try {
-            const textosParsedManualmente = parseRawText(data.generatedText || "");
-            // Limitar ao número máximo de slides permitido
-            const limitedTexts = textosParsedManualmente.slice(0, MAX_SLIDES_ALLOWED);
-            
-            if (limitedTexts.length > 0) {
-              setParsedTexts(limitedTexts);
-              toast({
-                title: "Sucesso!",
-                description: `${limitedTexts.length} slides foram gerados com sucesso.`,
-              });
-            } else {
-              throw new Error("Não foi possível processar o texto gerado.");
-            }
-          } catch (parseError) {
-            console.error("Erro ao analisar texto manualmente:", parseError);
+          if (limitedTexts.length > 0) {
+            setParsedTexts(limitedTexts);
+            await saveGeneratedTextToFirestore(limitedTexts, activeAgent);
+            toast({
+              title: "Sucesso!",
+              description: `${limitedTexts.length} slides foram gerados com sucesso.`,
+            });
+          } else {
             throw new Error("Não foi possível processar o texto gerado.");
           }
+        } catch (parseError) {
+          console.error("Erro ao analisar texto manualmente:", parseError);
+          throw new Error("Não foi possível processar o texto gerado.");
         }
-      } else {
-        throw new Error(data.error || "Falha ao gerar texto");
       }
 
     } catch (error: any) {
@@ -253,7 +211,6 @@ export const useFirebaseTextGeneration = (onApplyTexts: (texts: GeneratedText[])
       return;
     }
     
-    // Limitar o número de slides ao máximo permitido
     const limitedTexts = parsedTexts.slice(0, MAX_SLIDES_ALLOWED);
     
     onApplyTexts(limitedTexts);

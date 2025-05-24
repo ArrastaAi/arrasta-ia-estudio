@@ -1,176 +1,122 @@
-
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { 
-  User, 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  signOut as firebaseSignOut,
+import React, { createContext, useState, useEffect, useContext } from 'react';
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
   onAuthStateChanged,
-  updateProfile
+  sendPasswordResetEmail,
+  User
 } from "firebase/auth";
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
-import { auth, firestore } from "@/integrations/firebase/client";
-import { useToast } from "@/hooks/use-toast";
-import { FirebaseUserProfile } from "@/types/firebase.types";
+import { auth } from '@/integrations/firebase/client';
 
-interface FirebaseAuthContextProps {
+interface AuthContextProps {
   user: User | null;
   loading: boolean;
-  profile: FirebaseUserProfile | null;
   isAdmin: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, username: string) => Promise<void>;
-  signOut: () => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
 }
 
-const FirebaseAuthContext = createContext<FirebaseAuthContextProps | undefined>(undefined);
+const FirebaseAuthContext = createContext<AuthContextProps | undefined>(undefined);
 
-export const FirebaseAuthProvider = ({ children }: { children: ReactNode }) => {
+export const useFirebaseAuth = () => {
+  const context = useContext(FirebaseAuthContext);
+  if (!context) {
+    throw new Error('useFirebaseAuth must be used within a FirebaseAuthProvider');
+  }
+  return context;
+};
+
+export const FirebaseAuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState<FirebaseUserProfile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  const { toast } = useToast();
-
-  // Função para carregar o perfil do usuário a partir do Firestore
-  const loadUserProfile = async (userId: string) => {
-    try {
-      const userProfileRef = doc(firestore, 'profiles', userId);
-      const userProfileSnap = await getDoc(userProfileRef);
-      
-      if (userProfileSnap.exists()) {
-        const profileData = userProfileSnap.data() as FirebaseUserProfile;
-        setProfile(profileData);
-        // Verificar se é admin pelo email do usuário
-        setIsAdmin(user?.email === "ricoandrade01@gmail.com");
-      } else {
-        console.log("Perfil de usuário não encontrado");
-        setProfile(null);
-        setIsAdmin(false);
-      }
-    } catch (error) {
-      console.error("Erro ao carregar perfil:", error);
-      setProfile(null);
-      setIsAdmin(false);
-    }
-  };
 
   useEffect(() => {
-    // Configurar o listener para mudanças de estado de autenticação
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      
-      if (currentUser) {
-        // Verificar se é admin pelo email
-        setIsAdmin(currentUser.email === "ricoandrade01@gmail.com");
-        loadUserProfile(currentUser.uid);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        setUser(firebaseUser);
+        
+        // Verificar se é admin
+        const adminEmail = "ricoandrade01@gmail.com";
+        setIsAdmin(firebaseUser.email === adminEmail);
+        
+        // Criar ou atualizar perfil do usuário no Firestore
+        try {
+          const { createUserProfile, getUserProfile } = await import("@/services/firebaseUserService");
+          
+          const existingProfile = await getUserProfile(firebaseUser.uid);
+          if (!existingProfile) {
+            await createUserProfile({
+              uid: firebaseUser.uid,
+              email: firebaseUser.email || '',
+              displayName: firebaseUser.displayName || '',
+              photoURL: firebaseUser.photoURL || ''
+            });
+          }
+        } catch (error) {
+          console.error("Erro ao criar/atualizar perfil do usuário:", error);
+        }
       } else {
-        setProfile(null);
+        setUser(null);
         setIsAdmin(false);
       }
-      
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [user?.email]);
+  }, []);
 
-  const signIn = async (email: string, password: string) => {
+  const login = async (email: string, password: string) => {
     try {
       setLoading(true);
       await signInWithEmailAndPassword(auth, email, password);
-      toast({
-        title: "Login realizado com sucesso!",
-        description: "Bem-vindo de volta ao ArrastaAí",
-      });
     } catch (error: any) {
-      toast({
-        title: "Erro ao fazer login",
-        description: error.message,
-        variant: "destructive",
-      });
+      console.error("Login failed:", error.message);
+      throw error;
     } finally {
       setLoading(false);
     }
   };
 
-  const signUp = async (email: string, password: string, username: string) => {
+  const logout = async () => {
     try {
       setLoading(true);
-      
-      // Criar o usuário no Firebase Authentication
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const newUser = userCredential.user;
-      
-      // Atualizar o perfil do usuário com o nome de usuário
-      await updateProfile(newUser, {
-        displayName: username
-      });
-      
-      // Criar o perfil do usuário no Firestore
-      const userProfile: FirebaseUserProfile = {
-        id: newUser.uid,
-        username: username,
-        avatar_url: null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        is_admin: newUser.email === "ricoandrade01@gmail.com"
-      };
-      
-      await setDoc(doc(firestore, 'profiles', newUser.uid), userProfile);
-      
-      toast({
-        title: "Conta criada com sucesso!",
-        description: "Bem-vindo ao ArrastaAí",
-      });
+      await signOut(auth);
     } catch (error: any) {
-      toast({
-        title: "Erro ao criar conta",
-        description: error.message,
-        variant: "destructive",
-      });
+      console.error("Logout failed:", error.message);
+      throw error;
     } finally {
       setLoading(false);
     }
   };
 
-  const signOut = async () => {
+  const resetPassword = async (email: string) => {
     try {
       setLoading(true);
-      await firebaseSignOut(auth);
-      toast({
-        title: "Logout realizado com sucesso",
-      });
+      await sendPasswordResetEmail(auth, email);
     } catch (error: any) {
-      toast({
-        title: "Erro ao fazer logout",
-        description: error.message,
-        variant: "destructive",
-      });
+      console.error("Reset password failed:", error.message);
+      throw error;
     } finally {
       setLoading(false);
     }
+  };
+
+  const value = {
+    user,
+    loading,
+    isAdmin,
+    login,
+    logout,
+    resetPassword
   };
 
   return (
-    <FirebaseAuthContext.Provider value={{ 
-      user, 
-      loading, 
-      profile, 
-      isAdmin, 
-      signIn, 
-      signUp, 
-      signOut 
-    }}>
+    <FirebaseAuthContext.Provider value={value}>
       {children}
     </FirebaseAuthContext.Provider>
   );
-};
-
-export const useFirebaseAuth = () => {
-  const context = useContext(FirebaseAuthContext);
-  if (context === undefined) {
-    throw new Error("useFirebaseAuth must be used within a FirebaseAuthProvider");
-  }
-  return context;
 };

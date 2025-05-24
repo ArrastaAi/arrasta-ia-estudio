@@ -1,6 +1,7 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { YuriFormFields, FormatterFields } from "./ai-text-generator/FormFields";
+import { CarouselFormFields } from "./ai-text-generator/CarouselFormFields";
 import GenerateButton from "./ai-text-generator/GenerateButton";
 import GeneratedTexts from "./ai-text-generator/GeneratedTexts";
 import { useFirebaseTextGeneration } from "@/hooks/useFirebaseTextGeneration";
@@ -39,6 +40,13 @@ const FirebaseAITextGenerator = ({ carouselId, onApplyTexts }: FirebaseAITextGen
       <Tabs defaultValue={activeAgent}>
         <TabsList className="bg-gray-700">
           <TabsTrigger 
+            value="carousel" 
+            onClick={() => setActiveAgent("carousel")}
+            className="data-[state=active]:bg-purple-600 data-[state=active]:text-white"
+          >
+            Criar Carrossel
+          </TabsTrigger>
+          <TabsTrigger 
             value="yuri" 
             onClick={() => setActiveAgent("yuri")}
             className="data-[state=active]:bg-purple-600 data-[state=active]:text-white"
@@ -55,6 +63,18 @@ const FirebaseAITextGenerator = ({ carouselId, onApplyTexts }: FirebaseAITextGen
         </TabsList>
         
         <div className="mt-4">
+          <TabsContent value="carousel">
+            <CarouselFormFields 
+              formData={formData} 
+              handleInputChange={handleInputChange}
+              setFormData={setFormData}
+            />
+            
+            <div className="text-sm text-gray-400 mt-2 italic">
+              Este assistente cria carrosséis completos com base no tema, público-alvo e objetivo escolhidos.
+            </div>
+          </TabsContent>
+          
           <TabsContent value="yuri">
             <YuriFormFields 
               formData={formData} 
