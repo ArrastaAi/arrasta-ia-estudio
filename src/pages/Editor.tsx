@@ -577,6 +577,7 @@ const Editor = () => {
   };
 
   const handleUpdateTextStyles = (styles: TextStyleOptions) => {
+    console.log('[Editor] Recebendo atualização de estilos de texto:', styles);
     setTextStyles(styles);
   };
 

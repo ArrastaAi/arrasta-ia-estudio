@@ -17,17 +17,21 @@ interface TextContainerProps {
   initialText: string;
   initialStyles: TextStyles;
   onTextChange: (newText: string) => void;
-  activeTextStyle?: TextStyles;
+  activeTextStyle?: any; // Receber estilos ativos do Editor
 }
 
 const TextContainer: React.FC<TextContainerProps> = ({
   initialText,
-  onTextChange
+  onTextChange,
+  activeTextStyle
 }) => {
-  console.log('TextContainer renderizado com texto inicial:', initialText);
+  console.log('[TextContainer] Renderizado com:', {
+    initialText,
+    activeTextStyle
+  });
 
   const handleTextChange = (newText: string) => {
-    console.log('Texto alterado no editor:', newText);
+    console.log('[TextContainer] Texto alterado no editor:', newText);
     onTextChange(newText);
   };
 
@@ -37,6 +41,7 @@ const TextContainer: React.FC<TextContainerProps> = ({
         initialText={initialText}
         onTextChange={handleTextChange}
         className="min-h-[300px] w-full h-full"
+        globalTextStyles={activeTextStyle} // Passar estilos globais
       />
     </div>
   );

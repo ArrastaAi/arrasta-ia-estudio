@@ -7,6 +7,7 @@ interface FontOption {
   name: string;
   displayName: string;
   previewText: string;
+  fallback: string;
 }
 
 interface FontSelectorProps {
@@ -18,33 +19,38 @@ interface FontSelectorProps {
 const FONT_OPTIONS: FontOption[] = [
   {
     key: 'helvetica',
-    name: 'font-helvetica',
+    name: 'font-sans',
     displayName: 'Helvetica',
-    previewText: 'Aa'
+    previewText: 'Aa',
+    fallback: 'Arial, sans-serif'
   },
   {
     key: 'pacifico',
     name: 'font-pacifico',
     displayName: 'Pacifico',
-    previewText: 'Aa'
+    previewText: 'Aa',
+    fallback: 'cursive'
   },
   {
     key: 'bebas',
     name: 'font-bebas',
     displayName: 'Bebas',
-    previewText: 'Aa'
+    previewText: 'Aa',
+    fallback: 'Impact, sans-serif'
   },
   {
     key: 'brusher',
-    name: 'font-brusher',
+    name: 'font-dancing',
     displayName: 'Brusher',
-    previewText: 'Aa'
+    previewText: 'Aa',
+    fallback: 'Dancing Script, cursive'
   },
   {
     key: 'selima',
-    name: 'font-selima',
+    name: 'font-cinzel',
     displayName: 'Selima',
-    previewText: 'Aa'
+    previewText: 'Aa',
+    fallback: 'Cinzel, serif'
   }
 ];
 
@@ -53,6 +59,11 @@ const FontSelector: React.FC<FontSelectorProps> = ({
   onFontChange,
   showInControls = false
 }) => {
+  const handleFontChange = (fontKey: string) => {
+    console.log('[FontSelector] Fonte selecionada:', fontKey);
+    onFontChange(fontKey);
+  };
+
   if (showInControls) {
     // Versão compacta para os controles flutuantes
     return (
@@ -62,8 +73,9 @@ const FontSelector: React.FC<FontSelectorProps> = ({
             key={font.key}
             size="sm"
             variant={selectedFont === font.key ? "default" : "ghost"}
-            onClick={() => onFontChange(font.key)}
-            className={`text-white hover:bg-white/20 px-2 ${font.name}`}
+            onClick={() => handleFontChange(font.key)}
+            className={`text-white hover:bg-white/20 px-2`}
+            style={{ fontFamily: font.fallback }}
           >
             {font.previewText}
           </Button>
@@ -79,14 +91,19 @@ const FontSelector: React.FC<FontSelectorProps> = ({
         <Button
           key={font.key}
           variant={selectedFont === font.key ? "default" : "outline"}
-          onClick={() => onFontChange(font.key)}
-          className={`h-12 flex flex-col items-center justify-center bg-gray-800 hover:bg-gray-700 border-2 ${
+          onClick={() => handleFontChange(font.key)}
+          className={`h-16 flex flex-col items-center justify-center transition-all ${
             selectedFont === font.key 
-              ? 'border-purple-500 bg-purple-600 text-white' 
-              : 'border-gray-600 hover:border-purple-400 text-white'
+              ? 'border-purple-500 bg-purple-600 text-white shadow-lg' 
+              : 'border-gray-600 hover:border-purple-400 text-white bg-gray-800 hover:bg-gray-700'
           }`}
         >
-          <span className={`text-lg text-white ${font.name}`}>{font.previewText}</span>
+          <span 
+            className="text-xl text-white mb-1" 
+            style={{ fontFamily: font.fallback }}
+          >
+            {font.previewText}
+          </span>
           <span className="text-xs text-gray-300">{font.displayName}</span>
         </Button>
       ))}

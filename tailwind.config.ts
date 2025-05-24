@@ -1,8 +1,7 @@
 
 import type { Config } from "tailwindcss";
 
-export default {
-  darkMode: ["class"],
+const config: Config = {
   content: [
     "./pages/**/*.{ts,tsx}",
     "./components/**/*.{ts,tsx}",
@@ -20,15 +19,11 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
-        helvetica: ["Helvetica", "Arial", "sans-serif"],
-        bebas: ["Bebas Neue", "Arial Black", "sans-serif"],
-        pacifico: ["Pacifico", "cursive"],
-        brusher: ["Pacifico", "cursive"], // fallback para Brusher
-        selima: ["Pacifico", "cursive"], // fallback para Selima
-        fixture: ["Helvetica", "Arial", "sans-serif"],
-        serif: ["Georgia", "serif"],
-        mono: ["Courier New", "monospace"]
+        'helvetica': ['Arial', 'Helvetica', 'sans-serif'],
+        'pacifico': ['Pacifico', 'cursive'],
+        'bebas': ['"Bebas Neue"', 'Impact', 'sans-serif'],
+        'dancing': ['"Dancing Script"', 'cursive'], // Para Brusher
+        'cinzel': ['Cinzel', 'serif'], // Para Selima
       },
       colors: {
         border: "hsl(var(--border))",
@@ -64,14 +59,6 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        arrastaai: {
-          purple: "#A259FF",
-          blue: "#5B8EFF",
-          magenta: "#B16EFF",
-          black: "#000000",
-          gray: "#121212",
-          white: "#FFFFFF"
-        }
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -96,3 +83,5 @@ export default {
   },
   plugins: [require("tailwindcss-animate")],
 } satisfies Config;
+
+export default config;

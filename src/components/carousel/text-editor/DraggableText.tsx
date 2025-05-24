@@ -95,16 +95,15 @@ const DraggableText: React.FC<DraggableTextProps> = ({
     onEdit(); // Sai do modo de edição ao perder foco
   };
 
-  const getFontClassName = (fontFamily?: string) => {
+  const getFontFamily = (fontFamily?: string) => {
+    console.log('[DraggableText] Aplicando fonte:', fontFamily);
     switch (fontFamily) {
-      case 'pacifico': return 'font-pacifico';
-      case 'bebas': return 'font-bebas';
-      case 'brusher': return 'font-brusher';
-      case 'selima': return 'font-selima';
-      case 'fixture': return 'font-fixture';
-      case 'serif': return 'font-serif';
-      case 'mono': return 'font-mono';
-      default: return 'font-helvetica';
+      case 'pacifico': return 'Pacifico, cursive';
+      case 'bebas': return '"Bebas Neue", Impact, sans-serif';
+      case 'brusher': return '"Dancing Script", cursive';
+      case 'selima': return 'Cinzel, serif';
+      case 'helvetica': 
+      default: return 'Arial, Helvetica, sans-serif';
     }
   };
 
@@ -120,13 +119,21 @@ const DraggableText: React.FC<DraggableTextProps> = ({
     border: 'none',
     background: 'transparent',
     resize: 'none' as const,
-    fontFamily: 'inherit'
+    fontFamily: getFontFamily(styles.fontFamily)
   };
+
+  console.log('[DraggableText] Renderizando com estilos:', {
+    id,
+    fontFamily: styles.fontFamily,
+    resolvedFontFamily: getFontFamily(styles.fontFamily),
+    isSelected,
+    textColor: styles.textColor
+  });
 
   return (
     <div
       ref={elementRef}
-      className={`absolute cursor-move select-none ${getFontClassName(styles.fontFamily)} ${
+      className={`absolute cursor-move select-none ${
         isSelected ? 'ring-2 ring-blue-500' : ''
       }`}
       style={{

@@ -22,12 +22,14 @@ interface SimpleTextEditorProps {
   initialText?: string;
   onTextChange?: (allTexts: string) => void;
   className?: string;
+  globalTextStyles?: any; // Receber estilos globais do painel lateral
 }
 
 const SimpleTextEditor: React.FC<SimpleTextEditorProps> = ({
   initialText = '',
   onTextChange,
-  className = ''
+  className = '',
+  globalTextStyles
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [textElements, setTextElements] = useState<TextElement[]>([]);
@@ -40,6 +42,28 @@ const SimpleTextEditor: React.FC<SimpleTextEditorProps> = ({
     textAlign: 'center',
     fontFamily: 'helvetica'
   });
+
+  // Atualizar estilos globais quando recebidos do painel lateral
+  useEffect(() => {
+    if (globalTextStyles) {
+      console.log('[SimpleTextEditor] Recebendo estilos globais:', globalTextStyles);
+      const newGlobalStyles = {
+        fontSize: globalTextStyles.fontSize || 24,
+        textColor: globalTextStyles.textColor || '#FFFFFF',
+        fontWeight: globalTextStyles.fontWeight || 'bold',
+        textAlign: globalTextStyles.alignment || 'center',
+        fontFamily: globalTextStyles.fontFamily || 'helvetica'
+      };
+      console.log('[SimpleTextEditor] Aplicando novos estilos globais:', newGlobalStyles);
+      setGlobalStyles(newGlobalStyles);
+
+      // Aplicar aos elementos selecionados
+      if (selectedElementId) {
+        console.log('[SimpleTextEditor] Aplicando estilos ao elemento selecionado:', selectedElementId);
+        updateElementStyles(selectedElementId, newGlobalStyles);
+      }
+    }
+  }, [globalTextStyles, selectedElementId]);
 
   // Inicializar com texto inicial se fornecido
   useEffect(() => {
@@ -63,6 +87,7 @@ const SimpleTextEditor: React.FC<SimpleTextEditorProps> = ({
   }, [textElements, onTextChange]);
 
   const addNewText = () => {
+    console.log('[SimpleTextEditor] Adicionando novo texto com estilos:', globalStyles);
     const newElement: TextElement = {
       id: crypto.randomUUID(),
       text: 'Novo texto',
@@ -91,6 +116,7 @@ const SimpleTextEditor: React.FC<SimpleTextEditorProps> = ({
   };
 
   const updateElementStyles = (id: string, newStyles: TextStyles) => {
+    console.log('[SimpleTextEditor] Atualizando estilos do elemento:', id, newStyles);
     setTextElements(prev =>
       prev.map(el =>
         el.id === id ? { ...el, styles: newStyles } : el
@@ -99,6 +125,7 @@ const SimpleTextEditor: React.FC<SimpleTextEditorProps> = ({
   };
 
   const handleGlobalStyleChange = (newStyles: TextStyles) => {
+    console.log('[SimpleTextEditor] Mudança de estilo global:', newStyles);
     setGlobalStyles(newStyles);
     // Aplicar aos elementos selecionados
     if (selectedElementId) {
@@ -141,6 +168,13 @@ const SimpleTextEditor: React.FC<SimpleTextEditorProps> = ({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [selectedElementId, editingElementId]);
 
+  console.log('[SimpleTextEditor] Estado atual:', {
+    textElementsCount: textElements.length,
+    selectedElementId,
+    globalStyles,
+    globalTextStyles
+  });
+
   return (
     <div className={`relative w-full h-full ${className}`}>
       {/* Container principal */}
@@ -158,7 +192,10 @@ const SimpleTextEditor: React.FC<SimpleTextEditorProps> = ({
             styles={element.styles}
             isSelected={selectedElementId === element.id}
             isEditing={editingElementId === element.id}
-            onSelect={() => setSelectedElementId(element.id)}
+            onSelect={() => {
+              console.log('[SimpleTextEditor] Selecionando elemento:', element.id);
+              setSelectedElementId(element.id);
+            }}
             onEdit={() => {
               if (editingElementId === element.id) {
                 setEditingElementId(null);

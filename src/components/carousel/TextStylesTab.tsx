@@ -18,29 +18,34 @@ const TextStylesTab: React.FC<TextStylesTabProps> = ({
   const { toast } = useToast();
 
   const handleFontChange = (fontKey: string) => {
-    console.log('Alterando fonte para:', fontKey);
+    console.log('[TextStylesTab] Alterando fonte para:', fontKey);
     if (onUpdateTextStyles && textStyles) {
       const newStyles = { 
         ...textStyles, 
         fontFamily: fontKey as any
       };
-      console.log('Novos estilos:', newStyles);
+      console.log('[TextStylesTab] Novos estilos sendo enviados:', newStyles);
       onUpdateTextStyles(newStyles);
       toast({
         title: "Fonte alterada",
         description: `Fonte ${fontKey} aplicada com sucesso.`
       });
+    } else {
+      console.log('[TextStylesTab] Erro: onUpdateTextStyles ou textStyles não disponível', {
+        hasCallback: !!onUpdateTextStyles,
+        hasTextStyles: !!textStyles
+      });
     }
   };
 
   const handleColorChange = (color: string) => {
-    console.log('Alterando cor para:', color);
+    console.log('[TextStylesTab] Alterando cor para:', color);
     if (onUpdateTextStyles && textStyles) {
       const newStyles = { 
         ...textStyles, 
         textColor: color 
       };
-      console.log('Novos estilos:', newStyles);
+      console.log('[TextStylesTab] Novos estilos de cor:', newStyles);
       onUpdateTextStyles(newStyles);
       toast({
         title: "Cor alterada",
@@ -48,6 +53,12 @@ const TextStylesTab: React.FC<TextStylesTabProps> = ({
       });
     }
   };
+
+  console.log('[TextStylesTab] Renderizando com:', {
+    selectedFont: textStyles?.fontFamily || 'helvetica',
+    selectedColor: textStyles?.textColor || '#FFFFFF',
+    hasCallback: !!onUpdateTextStyles
+  });
 
   return (
     <div className="space-y-6">
