@@ -4,6 +4,7 @@ import { YuriFormFields, FormatterFields } from "./ai-text-generator/FormFields"
 import { CarouselFormFields } from "./ai-text-generator/CarouselFormFields";
 import GenerateButton from "./ai-text-generator/GenerateButton";
 import GeneratedTexts from "./ai-text-generator/GeneratedTexts";
+import AgentInfoDisplay from "./ai-text-generator/AgentInfoDisplay";
 import { useFirebaseTextGeneration } from "@/hooks/useFirebaseTextGeneration";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
@@ -35,8 +36,6 @@ const FirebaseAITextGenerator = ({ carouselId, onApplyTexts }: FirebaseAITextGen
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-medium text-white">Geração de Conteúdo com IA</h3>
-      
       <Tabs defaultValue={activeAgent}>
         <TabsList className="bg-gray-700">
           <TabsTrigger 
@@ -125,6 +124,7 @@ const FirebaseAITextGenerator = ({ carouselId, onApplyTexts }: FirebaseAITextGen
         
         {hasGeneratedTexts && (
           <Card className="bg-gray-750 border-gray-600 p-4 mt-4">
+            <AgentInfoDisplay agent={activeAgent} formData={formData} />
             <GeneratedTexts 
               parsedTexts={parsedTexts.slice(0, MAX_SLIDES_ALLOWED)} 
               handleApply={handleApply} 

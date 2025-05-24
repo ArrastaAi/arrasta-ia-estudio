@@ -18,6 +18,8 @@ import TextStylesTab from "@/components/carousel/TextStylesTab";
 import { TextStyleOptions } from "@/types/carousel.types";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import { formatDistanceToNow } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface CarouselData {
   id: string;
