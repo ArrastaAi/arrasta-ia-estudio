@@ -1,8 +1,6 @@
 
 import { Button } from "@/components/ui/button";
-import { Loader2, Sparkles, AlertCircle } from "lucide-react";
-import { useFirebaseAPIKeyManager } from "@/hooks/useFirebaseAPIKeyManager";
-import { useEffect, useState } from "react";
+import { Loader2, Sparkles } from "lucide-react";
 
 interface GenerateButtonProps {
   loading: boolean;
@@ -10,31 +8,6 @@ interface GenerateButtonProps {
 }
 
 const GenerateButton = ({ loading, onClick }: GenerateButtonProps) => {
-  const { getBestAvailableKey } = useFirebaseAPIKeyManager();
-  const [hasApiKey, setHasApiKey] = useState<boolean>(true);
-
-  useEffect(() => {
-    const checkApiKey = () => {
-      const apiKey = getBestAvailableKey();
-      setHasApiKey(!!apiKey && apiKey.length > 0);
-    };
-    
-    checkApiKey();
-  }, [getBestAvailableKey]);
-
-  if (!hasApiKey) {
-    return (
-      <Button 
-        disabled
-        variant="outline"
-        className="bg-yellow-500/20 border-yellow-500 text-yellow-500 hover:bg-yellow-500/30"
-      >
-        <AlertCircle className="mr-2 h-4 w-4" />
-        Sistema indisponível
-      </Button>
-    );
-  }
-
   return (
     <Button 
       onClick={onClick}

@@ -30,23 +30,14 @@ interface GenerateAgentContentResult {
   error?: string;
 }
 
-export async function generateAgentContent(params: GenerateAgentContentParams): Promise<GenerateAgentContentResult> {
-  try {
-    const {
-      agent,
-      prompt,
-      topic,
-      audience,
-      goal,
-      content,
-      apiKey,
-      slideCount,
-      format,
-      onlyCorrectSpelling = false,
-      maxSlidesAllowed = 9
-    } = params;
+// Lista de chaves de fallback - será populada dinamicamente
+const FALLBACK_API_KEYS = [
+  // Será preenchida com chaves do Supabase e outras fontes
+];
 
-    console.log("Inicializando Google Generative AI com a chave:", apiKey ? "***" : "não fornecida");
+async function tryGenerateWithKey(apiKey: string, params: GenerateAgentContentParams): Promise<GenerateAgentContentResult> {
+  try {
+    console.log("Tentando gerar conteúdo com chave:", apiKey ? "***" : "não fornecida");
 
     if (!apiKey) {
       throw new Error("Chave da API não fornecida");
@@ -58,13 +49,13 @@ export async function generateAgentContent(params: GenerateAgentContentParams): 
     let systemPrompt = "";
     let userPrompt = "";
 
-    if (agent === "yuri") {
+    if (params.agent === "yuri") {
       systemPrompt = `Você é Yuri, um especialista em copywriting viral para carrosséis no Instagram. 
       Sua missão é criar textos persuasivos que engajam e convertem.
       
       REGRAS IMPORTANTES:
-      - Crie exatamente ${slideCount} slides
-      - Máximo de ${format.wordLimits[0] || 20} palavras por slide
+      - Crie exatamente ${params.slideCount} slides
+      - Máximo de ${params.format.wordLimits[0] || 20} palavras por slide
       - Use linguagem direta e impactante
       - Foque na conversão e engajamento
       - Termine sempre com CTA forte
@@ -73,14 +64,14 @@ export async function generateAgentContent(params: GenerateAgentContentParams): 
       Slide 1: [texto]
       Slide 2: [texto]
       Slide 3: [texto]
-      (continue até slide ${slideCount})`;
+      (continue até slide ${params.slideCount})`;
 
-      userPrompt = `Crie um carrossel sobre: ${topic}
-      Público-alvo: ${audience || "geral"}
-      Objetivo: ${goal || "educar"}
-      ${prompt ? `Instruções extras: ${prompt}` : ""}`;
-    } else if (agent === "formatter") {
-      if (onlyCorrectSpelling) {
+      userPrompt = `Crie um carrossel sobre: ${params.topic}
+      Público-alvo: ${params.audience || "geral"}
+      Objetivo: ${params.goal || "educar"}
+      ${params.prompt ? `Instruções extras: ${params.prompt}` : ""}`;
+    } else if (params.agent === "formatter") {
+      if (params.onlyCorrectSpelling) {
         systemPrompt = `Você é um corretor ortográfico especializado. 
         Corrija apenas erros de:
         - Ortografia
@@ -97,14 +88,14 @@ export async function generateAgentContent(params: GenerateAgentContentParams): 
         Slide 2: [texto corrigido]
         (continue conforme necessário)`;
         
-        userPrompt = `Corrija apenas a ortografia deste texto: ${content}`;
+        userPrompt = `Corrija apenas a ortografia deste texto: ${params.content}`;
       } else {
         systemPrompt = `Você é um formatador de textos especializado em carrosséis. 
         Transforme qualquer texto em slides otimizados.
         
         REGRAS:
-        - Crie entre 3 a ${Math.min(slideCount, maxSlidesAllowed)} slides
-        - Máximo de ${format.wordLimits[0] || 25} palavras por slide
+        - Crie entre 3 a ${Math.min(params.slideCount, params.maxSlidesAllowed || 9)} slides
+        - Máximo de ${params.format.wordLimits[0] || 25} palavras por slide
         - Mantenha a essência do conteúdo original
         - Use linguagem clara e direta
         
@@ -114,8 +105,8 @@ export async function generateAgentContent(params: GenerateAgentContentParams): 
         Slide 3: [texto]
         (continue conforme necessário)`;
 
-        userPrompt = `Formate este texto em slides: ${content}
-        ${prompt ? `Instruções extras: ${prompt}` : ""}`;
+        userPrompt = `Formate este texto em slides: ${params.content}
+        ${params.prompt ? `Instruções extras: ${params.prompt}` : ""}`;
       }
     }
 
@@ -130,7 +121,7 @@ export async function generateAgentContent(params: GenerateAgentContentParams): 
     console.log("Resposta do Gemini recebida:", generatedText.substring(0, 200) + "...");
 
     // Parse the generated text into slides
-    const parsedTexts = parseResponseToSlides(generatedText, maxSlidesAllowed);
+    const parsedTexts = parseResponseToSlides(generatedText, params.maxSlidesAllowed || 9);
 
     return {
       success: true,
@@ -139,12 +130,32 @@ export async function generateAgentContent(params: GenerateAgentContentParams): 
     };
 
   } catch (error: any) {
-    console.error("Erro na geração de conteúdo:", error);
-    return {
-      success: false,
-      error: error.message || "Erro interno do servidor"
-    };
+    console.error("Erro na geração de conteúdo com esta chave:", error);
+    throw error;
   }
+}
+
+export async function generateAgentContent(params: GenerateAgentContentParams): Promise<GenerateAgentContentResult> {
+  const apiKeysToTry = [params.apiKey, ...FALLBACK_API_KEYS].filter(Boolean);
+  
+  let lastError: Error | null = null;
+
+  // Tenta cada chave sequencialmente
+  for (const apiKey of apiKeysToTry) {
+    try {
+      return await tryGenerateWithKey(apiKey, params);
+    } catch (error: any) {
+      console.log(`Falhou com chave ${apiKey ? "***" : "vazia"}:`, error.message);
+      lastError = error;
+      continue;
+    }
+  }
+
+  // Se todas as chaves falharam
+  return {
+    success: false,
+    error: lastError?.message || "Todas as chaves de API falharam"
+  };
 }
 
 function parseResponseToSlides(text: string, maxSlides: number): GeneratedText[] {

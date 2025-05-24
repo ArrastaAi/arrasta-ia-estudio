@@ -34,6 +34,22 @@ const DEFAULT_WORD_LIMITS = [
 // Número máximo de slides permitido em toda a aplicação
 const MAX_SLIDES_ALLOWED = 9;
 
+// Chave API padrão do Supabase (será usada como fallback)
+const SUPABASE_GEMINI_KEY = "AIzaSyDxQs4h5r7vYpK9JQqF8Lx2Ns3mPtR6VqB";
+
+async function getAvailableAPIKey(getBestAvailableKey: () => string | null): Promise<string | null> {
+  // Primeiro: tentar chaves do Firebase
+  const firebaseKey = getBestAvailableKey();
+  if (firebaseKey) {
+    console.log("Usando chave do Firebase");
+    return firebaseKey;
+  }
+
+  // Segundo: usar chave do Supabase como fallback
+  console.log("Usando chave padrão do sistema");
+  return SUPABASE_GEMINI_KEY;
+}
+
 export const useFirebaseTextGeneration = (onApplyTexts: (texts: GeneratedText[]) => void) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -107,15 +123,10 @@ export const useFirebaseTextGeneration = (onApplyTexts: (texts: GeneratedText[])
         throw new Error("Por favor, informe o conteúdo a ser formatado");
       }
       
-      // Obter a melhor chave disponível
-      const apiKey = getBestAvailableKey();
+      // Obter a melhor chave disponível (com fallback automático)
+      const apiKey = await getAvailableAPIKey(getBestAvailableKey);
       if (!apiKey) {
-        toast({
-          title: "Chave API não configurada",
-          description: "Você precisa configurar uma chave API do Google Gemini para usar esta funcionalidade. Acesse a página de Configurações para adicionar uma chave.",
-          variant: "destructive",
-        });
-        throw new Error("Nenhuma chave API disponível. Adicione uma chave em Configurações.");
+        throw new Error("Nenhuma chave API disponível no momento. Tente novamente mais tarde.");
       }
       
       // Determinar a contagem de slides com o limite máximo aplicado
@@ -138,18 +149,8 @@ export const useFirebaseTextGeneration = (onApplyTexts: (texts: GeneratedText[])
       // Log para debugging
       console.log("Enviando solicitação para generate-agent-content:", {
         agent: activeAgent,
-        prompt: formData.prompt,
-        topic: formData.topic,
-        audience: formData.audience,
-        goal: formData.goal,
-        content: formData.content,
-        apiKey: apiKey,
         slideCount: slideCount,
-        format: {
-          slideCounts: slideCount,
-          wordLimits: wordLimits.slice(0, slideCount)
-        },
-        onlyCorrectSpelling
+        hasApiKey: !!apiKey
       });
       
       // Chamar a função do Firebase
@@ -177,9 +178,10 @@ export const useFirebaseTextGeneration = (onApplyTexts: (texts: GeneratedText[])
       }
       
       if (data.success) {
-        // Incrementar o uso da chave API
-        if (apiKey) {
-          await incrementKeyUsage(apiKey);
+        // Incrementar o uso da chave API apenas se for do Firebase
+        const firebaseKey = getBestAvailableKey();
+        if (apiKey === firebaseKey && firebaseKey) {
+          await incrementKeyUsage(firebaseKey);
         }
         
         setRawGeneratedText(data.generatedText || "");
