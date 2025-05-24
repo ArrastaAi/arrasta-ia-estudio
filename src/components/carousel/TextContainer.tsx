@@ -24,12 +24,21 @@ const TextContainer: React.FC<TextContainerProps> = ({
   initialText,
   onTextChange
 }) => {
+  console.log('TextContainer renderizado com texto inicial:', initialText);
+
+  const handleTextChange = (newText: string) => {
+    console.log('Texto alterado no editor:', newText);
+    onTextChange(newText);
+  };
+
   return (
-    <SimpleTextEditor
-      initialText={initialText}
-      onTextChange={onTextChange}
-      className="min-h-[300px]"
-    />
+    <div className="w-full h-full relative">
+      <SimpleTextEditor
+        initialText={initialText}
+        onTextChange={handleTextChange}
+        className="min-h-[300px] w-full h-full"
+      />
+    </div>
   );
 };
 

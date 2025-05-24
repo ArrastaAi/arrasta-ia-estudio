@@ -1,11 +1,10 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Type, Palette } from "lucide-react";
-import { TextStyleOptions, ARRASTAAI_COLORS } from "@/types/carousel.types";
-import { ARRASTAAI_TEMPLATES } from "@/utils/arrastaaiTemplates";
+import { TextStyleOptions, INSTAGRAM_COLORS } from "@/types/carousel.types";
+import FontSelector from "./text-editor/FontSelector";
 import { useToast } from "@/hooks/use-toast";
 
 interface TextStylesTabProps {
@@ -18,106 +17,89 @@ const TextStylesTab: React.FC<TextStylesTabProps> = ({
   onUpdateTextStyles 
 }) => {
   const { toast } = useToast();
-  
-  const [selectedTemplate, setSelectedTemplate] = useState<string>("minimal");
 
-  const applyTemplate = (templateId: string) => {
-    const template = ARRASTAAI_TEMPLATES[templateId];
-    if (!template || !onUpdateTextStyles) return;
+  const handleFontChange = (fontKey: string) => {
+    if (onUpdateTextStyles && textStyles) {
+      onUpdateTextStyles({ 
+        ...textStyles, 
+        fontFamily: fontKey as any
+      });
+      toast({
+        title: "Fonte alterada",
+        description: `Fonte ${fontKey} aplicada com sucesso.`
+      });
+    }
+  };
 
-    setSelectedTemplate(templateId);
-    
-    onUpdateTextStyles({
-      textSize: template.textStyle.textSize || "medium",
-      textPosition: template.textStyle.textPosition || "center",
-      textStyle: template.textStyle.textStyle || "minimal",
-      textColor: template.textStyle.textColor || ARRASTAAI_COLORS.white,
-      fontFamily: template.textStyle.fontFamily || "helvetica",
-      hasBackground: template.textStyle.hasBackground || false,
-      backgroundColor: template.textStyle.backgroundColor || ARRASTAAI_COLORS.black,
-      backgroundOpacity: template.textStyle.backgroundOpacity || 60,
-      alignment: "center",
-      fontSize: 24,
-      hasOutline: false,
-      outlineColor: "#ffffff",
-      outlineWidth: 1,
-      textHierarchy: "primary",
-      fontWeight: template.textStyle.fontWeight || "regular",
-      brandStyle: `arrastaai_${templateId}` as any,
-      useIntelligentPositioning: true,
-      overlayIntensity: 0,
-      textCase: template.textStyle.textCase || "none",
-      letterSpacing: 0.02
-    });
-    
-    toast({
-      title: "Template aplicado",
-      description: `Template ${template.name} foi aplicado com sucesso.`
-    });
+  const handleColorChange = (color: string) => {
+    if (onUpdateTextStyles && textStyles) {
+      onUpdateTextStyles({ 
+        ...textStyles, 
+        textColor: color 
+      });
+      toast({
+        title: "Cor alterada",
+        description: "Nova cor aplicada com sucesso."
+      });
+    }
   };
 
   return (
     <div className="space-y-6">
-      {/* Templates ArrastaAí */}
+      {/* Seleção de Fontes */}
+      <div>
+        <Label className="text-white mb-3 block flex items-center gap-2">
+          <Type className="h-4 w-4" />
+          Fontes de Texto
+        </Label>
+        <FontSelector
+          selectedFont={textStyles?.fontFamily || 'helvetica'}
+          onFontChange={handleFontChange}
+        />
+      </div>
+
+      {/* Cores do Instagram */}
       <div>
         <Label className="text-white mb-3 block flex items-center gap-2">
           <Palette className="h-4 w-4" />
-          Templates de Texto
+          Cores do Instagram
         </Label>
-        <div className="grid grid-cols-2 gap-3">
-          {Object.values(ARRASTAAI_TEMPLATES).map(template => (
-            <Card 
-              key={template.id}
-              className={`p-3 cursor-pointer border-2 transition-all hover:scale-105 ${
-                selectedTemplate === template.id
-                  ? 'border-purple-500 bg-purple-50' 
-                  : 'border-gray-700 hover:border-purple-300'
-              }`}
-              onClick={() => applyTemplate(template.id)}
-            >
-              <div className="text-center">
-                <div 
-                  className="w-full h-12 rounded mb-2 flex items-center justify-center text-2xl"
-                  style={{ 
-                    backgroundColor: template.colors.background,
-                    color: template.colors.text 
-                  }}
-                >
-                  {template.preview}
-                </div>
-                <p className="text-xs font-medium text-white">{template.name}</p>
-                <p className="text-xs text-gray-400">{template.description}</p>
-              </div>
-            </Card>
+        <div className="grid grid-cols-5 gap-3">
+          {Object.entries(INSTAGRAM_COLORS).map(([name, color]) => (
+            <div key={name} className="flex flex-col items-center">
+              <button
+                className={`w-12 h-12 rounded-lg border-3 hover:scale-110 transition-transform ${
+                  textStyles?.textColor === color 
+                    ? 'border-white ring-2 ring-purple-500' 
+                    : 'border-gray-600 hover:border-white'
+                }`}
+                style={{ backgroundColor: color }}
+                onClick={() => handleColorChange(color)}
+                title={name}
+              />
+              <span className="text-xs text-gray-400 mt-1 capitalize">
+                {name}
+              </span>
+            </div>
           ))}
         </div>
       </div>
 
-      {/* Cores Rápidas */}
-      <div>
-        <Label className="text-white text-sm mb-2 block">Cores Rápidas</Label>
-        <div className="grid grid-cols-7 gap-2">
-          {Object.entries(ARRASTAAI_COLORS).map(([name, color]) => (
-            <Button 
-              key={name}
-              className="h-8 w-8 rounded-md p-0 border-2 hover:scale-110 transition-transform"
-              style={{ backgroundColor: color }}
-              onClick={() => {
-                if (onUpdateTextStyles && textStyles) {
-                  onUpdateTextStyles({ ...textStyles, textColor: color });
-                }
-              }}
-              title={name}
-            />
-          ))}
+      {/* Dicas de Uso */}
+      <Card className="p-4 bg-gray-800/50 border-gray-700">
+        <div className="text-center space-y-2">
+          <h3 className="text-white font-medium flex items-center justify-center gap-2">
+            <Type className="h-4 w-4" />
+            Dicas de Edição
+          </h3>
+          <div className="text-sm text-gray-300 space-y-1">
+            <p>• Clique no texto para editar</p>
+            <p>• Arraste para mover o texto</p>
+            <p>• Use Enter para nova linha</p>
+            <p>• ESC para cancelar edição</p>
+          </div>
         </div>
-      </div>
-
-      <div className="text-center pt-4">
-        <p className="text-sm text-gray-400">
-          💡 Clique no texto para editar. Arraste para mover.
-        </p>
-      </div>
+      </Card>
     </div>
   );
 };

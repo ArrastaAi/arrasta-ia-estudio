@@ -48,13 +48,19 @@ export interface ArrastaAiTemplate {
   textStyle: Partial<TextStyleOptions>;
 }
 
-// Paleta de cores ArrastaAí
-export const ARRASTAAI_COLORS = {
-  black: "#000000",
-  darkGray: "#121212", 
+// Paleta de cores do Instagram Stories
+export const INSTAGRAM_COLORS = {
   white: "#FFFFFF",
-  purple: "#A259FF",
-  blue: "#5B8EFF",
-  magenta: "#B16EFF",
-  lightGray: "#F5F5F5"
+  black: "#000000",
+  red: "#FF3040",
+  orange: "#FF6B35", 
+  yellow: "#FFD23F",
+  green: "#4CAF50",
+  blue: "#2196F3",
+  purple: "#9C27B0",
+  pink: "#E91E63",
+  gray: "#757575"
 };
+
+// Manter compatibilidade (deprecated)
+export const ARRASTAAI_COLORS = INSTAGRAM_COLORS;

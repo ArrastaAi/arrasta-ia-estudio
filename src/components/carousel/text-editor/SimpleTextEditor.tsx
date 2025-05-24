@@ -8,6 +8,7 @@ interface TextStyles {
   textColor: string;
   fontWeight: 'normal' | 'bold';
   textAlign: 'left' | 'center' | 'right';
+  fontFamily?: string;
 }
 
 interface TextElement {
@@ -36,7 +37,8 @@ const SimpleTextEditor: React.FC<SimpleTextEditorProps> = ({
     fontSize: 24,
     textColor: '#FFFFFF',
     fontWeight: 'bold',
-    textAlign: 'center'
+    textAlign: 'center',
+    fontFamily: 'helvetica'
   });
 
   // Inicializar com texto inicial se fornecido
@@ -64,7 +66,7 @@ const SimpleTextEditor: React.FC<SimpleTextEditorProps> = ({
     const newElement: TextElement = {
       id: crypto.randomUUID(),
       text: 'Novo texto',
-      position: { x: 20, y: 30 },
+      position: { x: 20, y: 30 + (textElements.length * 60) },
       styles: globalStyles
     };
     setTextElements(prev => [...prev, newElement]);

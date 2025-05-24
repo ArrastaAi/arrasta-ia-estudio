@@ -2,13 +2,15 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Type, Bold, Palette } from 'lucide-react';
-import { ARRASTAAI_COLORS } from '@/types/carousel.types';
+import { INSTAGRAM_COLORS } from '@/types/carousel.types';
+import FontSelector from './FontSelector';
 
 interface TextStyles {
   fontSize: number;
   textColor: string;
   fontWeight: 'normal' | 'bold';
   textAlign: 'left' | 'center' | 'right';
+  fontFamily?: string;
 }
 
 interface SimpleTextControlsProps {
@@ -23,7 +25,11 @@ const SimpleTextControls: React.FC<SimpleTextControlsProps> = ({
   onAddText
 }) => {
   const fontSizes = [16, 20, 24, 28, 32];
-  const colors = Object.values(ARRASTAAI_COLORS);
+  const colors = Object.values(INSTAGRAM_COLORS);
+
+  const handleFontChange = (fontKey: string) => {
+    onStyleChange({ ...styles, fontFamily: fontKey });
+  };
 
   return (
     <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-black/80 backdrop-blur-sm rounded-full px-4 py-2 flex items-center space-x-3 z-30">
@@ -36,6 +42,13 @@ const SimpleTextControls: React.FC<SimpleTextControlsProps> = ({
       >
         <Type className="h-4 w-4" />
       </Button>
+
+      {/* Seleção de fonte */}
+      <FontSelector
+        selectedFont={styles.fontFamily || 'helvetica'}
+        onFontChange={handleFontChange}
+        showInControls={true}
+      />
 
       {/* Tamanho da fonte */}
       <div className="flex items-center space-x-1">
@@ -65,10 +78,10 @@ const SimpleTextControls: React.FC<SimpleTextControlsProps> = ({
         <Bold className="h-4 w-4" />
       </Button>
 
-      {/* Cores */}
+      {/* Cores do Instagram */}
       <div className="flex items-center space-x-1">
         <Palette className="h-4 w-4 text-white" />
-        {colors.slice(0, 5).map(color => (
+        {colors.slice(0, 6).map(color => (
           <button
             key={color}
             className={`w-6 h-6 rounded-full border-2 ${

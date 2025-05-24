@@ -7,6 +7,7 @@ interface TextStyles {
   textColor: string;
   fontWeight: 'normal' | 'bold';
   textAlign: 'left' | 'center' | 'right';
+  fontFamily?: string;
 }
 
 interface DraggableTextProps {
@@ -94,6 +95,19 @@ const DraggableText: React.FC<DraggableTextProps> = ({
     onEdit(); // Sai do modo de edição ao perder foco
   };
 
+  const getFontClassName = (fontFamily?: string) => {
+    switch (fontFamily) {
+      case 'pacifico': return 'font-pacifico';
+      case 'bebas': return 'font-bebas';
+      case 'brusher': return 'font-brusher';
+      case 'selima': return 'font-selima';
+      case 'fixture': return 'font-fixture';
+      case 'serif': return 'font-serif';
+      case 'mono': return 'font-mono';
+      default: return 'font-helvetica';
+    }
+  };
+
   const textStyle = {
     fontSize: `${styles.fontSize}px`,
     color: styles.textColor,
@@ -112,7 +126,7 @@ const DraggableText: React.FC<DraggableTextProps> = ({
   return (
     <div
       ref={elementRef}
-      className={`absolute cursor-move select-none ${
+      className={`absolute cursor-move select-none ${getFontClassName(styles.fontFamily)} ${
         isSelected ? 'ring-2 ring-blue-500' : ''
       }`}
       style={{
