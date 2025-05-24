@@ -133,17 +133,25 @@ const SimpleTextEditor: React.FC<SimpleTextEditorProps> = ({
   };
 
   const handleElementEdit = (id: string) => {
-    console.log('[SimpleTextEditor] Editando elemento:', id);
+    console.log('[SimpleTextEditor] Alterando estado de edição do elemento:', id);
     if (editingElementId === id) {
+      console.log('[SimpleTextEditor] Finalizando edição');
       setEditingElementId(null);
     } else {
+      console.log('[SimpleTextEditor] Iniciando edição');
       setEditingElementId(id);
+      setSelectedElementId(id); // Garantir que está selecionado
     }
   };
 
-  const handleContainerClick = () => {
-    setSelectedElementId(null);
-    setEditingElementId(null);
+  // Simplificar o handler do container - só desseleciona se clicar no fundo
+  const handleContainerClick = (e: React.MouseEvent) => {
+    // Só desseleciona se o clique foi diretamente no container (não em um filho)
+    if (e.target === e.currentTarget) {
+      console.log('[SimpleTextEditor] Clique no container - desselecionando');
+      setSelectedElementId(null);
+      setEditingElementId(null);
+    }
   };
 
   const deleteElement = (id: string) => {
@@ -179,6 +187,7 @@ const SimpleTextEditor: React.FC<SimpleTextEditorProps> = ({
   console.log('[SimpleTextEditor] Estado atual:', {
     textElementsCount: textElements.length,
     selectedElementId,
+    editingElementId,
     globalStyles,
     globalTextStyles
   });

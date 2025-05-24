@@ -40,7 +40,7 @@ const DraggableText: React.FC<DraggableTextProps> = ({
   const elementRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [localText, setLocalText] = useState(text);
-  const [isDragMode, setIsDragMode] = useState(false);
+  const [clickTimer, setClickTimer] = useState<NodeJS.Timeout | null>(null);
 
   const { 
     isDragging, 
@@ -59,68 +59,106 @@ const DraggableText: React.FC<DraggableTextProps> = ({
     setLocalText(text);
   }, [text]);
 
+  // Garantir foco no textarea quando entra em modo de edição
   useEffect(() => {
     if (isEditing && textareaRef.current) {
-      textareaRef.current.focus();
-      textareaRef.current.select();
+      console.log('[DraggableText] Entrando em modo de edição, focando textarea');
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+          textareaRef.current.select();
+        }
+      }, 0);
     }
   }, [isEditing]);
 
-  const handleMouseDownOnElement = (e: React.MouseEvent) => {
-    console.log('[DraggableText] Mouse down:', { isEditing, isSelected, isDragMode });
+  // Handler para clique simples com timer para detectar duplo clique
+  const handleSingleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
     
     if (isEditing) {
-      e.stopPropagation();
+      console.log('[DraggableText] Clique ignorado - está em modo de edição');
       return;
     }
 
-    // Duplo clique para editar
-    if (e.detail === 2) {
-      e.stopPropagation();
+    console.log('[DraggableText] Clique simples detectado');
+
+    // Se já existe um timer, é um duplo clique
+    if (clickTimer) {
+      clearTimeout(clickTimer);
+      setClickTimer(null);
+      console.log('[DraggableText] Duplo clique detectado - iniciando edição');
       onEdit();
       return;
     }
 
-    // Clique simples para selecionar
-    if (!isSelected) {
+    // Configurar timer para clique simples
+    const timer = setTimeout(() => {
+      console.log('[DraggableText] Timer expirado - processando clique simples');
+      if (!isSelected) {
+        console.log('[DraggableText] Selecionando elemento');
+        onSelect();
+      }
+      setClickTimer(null);
+    }, 250); // 250ms para detectar duplo clique
+
+    setClickTimer(timer);
+  };
+
+  // Handler dedicado para duplo clique (fallback)
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    console.log('[DraggableText] onDoubleClick disparado');
+    
+    if (clickTimer) {
+      clearTimeout(clickTimer);
+      setClickTimer(null);
+    }
+    
+    if (!isEditing) {
+      console.log('[DraggableText] Iniciando edição via duplo clique');
+      onEdit();
+    }
+  };
+
+  // Handler para início do arrasto
+  const handleMouseDownForDrag = (e: React.MouseEvent) => {
+    if (isEditing) {
+      console.log('[DraggableText] Mouse down ignorado - está em edição');
       e.stopPropagation();
-      onSelect();
       return;
     }
 
-    // Se já está selecionado, permitir arrastar
-    setIsDragMode(true);
-    handleMouseDown(e);
-  };
-
-  const handleClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!isEditing && !isDragging) {
-      if (!isSelected) {
-        console.log('[DraggableText] Selecionando elemento:', id);
-        onSelect();
-      }
+    // Só permite arrasto se o elemento já estiver selecionado
+    if (isSelected && !isDragging) {
+      console.log('[DraggableText] Iniciando arrasto');
+      handleMouseDown(e);
     }
   };
 
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newText = e.target.value;
+    console.log('[DraggableText] Texto alterado:', newText);
     setLocalText(newText);
     onTextChange(newText);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    console.log('[DraggableText] Tecla pressionada:', e.key);
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
+      console.log('[DraggableText] Enter pressionado - finalizando edição');
       onEdit();
     }
     if (e.key === 'Escape') {
+      console.log('[DraggableText] Escape pressionado - cancelando edição');
       setLocalText(text);
       onEdit();
     }
   };
 
   const handleBlur = () => {
+    console.log('[DraggableText] Textarea perdeu foco - finalizando edição');
     onEdit();
   };
 
@@ -154,7 +192,7 @@ const DraggableText: React.FC<DraggableTextProps> = ({
   const containerClasses = `
     absolute transition-all duration-200
     ${isSelected ? 'ring-2 ring-blue-500 ring-offset-2 ring-offset-transparent' : ''}
-    ${isEditing ? 'cursor-text' : isDragMode || isDragging ? 'cursor-move' : 'cursor-pointer'}
+    ${isEditing ? 'cursor-text' : isDragging ? 'cursor-move' : 'cursor-pointer'}
     ${isEditing ? '' : 'select-none'}
   `.trim();
 
@@ -164,7 +202,8 @@ const DraggableText: React.FC<DraggableTextProps> = ({
     resolvedFontFamily: getFontFamily(styles.fontFamily),
     isSelected,
     isEditing,
-    textColor: styles.textColor
+    textColor: styles.textColor,
+    isDragging
   });
 
   return (
@@ -176,8 +215,9 @@ const DraggableText: React.FC<DraggableTextProps> = ({
         zIndex: isSelected ? 20 : 10,
         touchAction: isDragging ? 'none' : 'auto'
       }}
-      onClick={handleClick}
-      onMouseDown={!isEditing ? handleMouseDownOnElement : undefined}
+      onClick={handleSingleClick}
+      onDoubleClick={handleDoubleClick}
+      onMouseDown={handleMouseDownForDrag}
       onTouchStart={!isEditing ? handleTouchStart : undefined}
     >
       {isEditing ? (
@@ -190,6 +230,7 @@ const DraggableText: React.FC<DraggableTextProps> = ({
           style={textStyle}
           className="min-w-[100px] min-h-[40px] bg-transparent resize-none"
           rows={1}
+          onClick={(e) => e.stopPropagation()}
         />
       ) : (
         <div
