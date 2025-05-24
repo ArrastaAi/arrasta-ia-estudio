@@ -6,11 +6,13 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card } from "@/components/ui/card";
-import { AlignCenter, AlignLeft, AlignRight, Move, Type, Bold, Italic, Underline } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlignCenter, AlignLeft, AlignRight, Move, Type, Palette, Zap } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import EditableText from "./EditableText";
 import { TextStyleOptions } from "@/types/carousel.types";
+import { BRAND_TEMPLATES, PREDIAL_CASA_NOVA_COLORS } from "@/utils/brandTemplates";
+import IntelligentTextRenderer from "./text/IntelligentTextRenderer";
 
 interface TextStylesTabProps {
   textStyles?: TextStyleOptions;
@@ -23,7 +25,7 @@ const TextStylesTab: React.FC<TextStylesTabProps> = ({
 }) => {
   const { toast } = useToast();
   
-  // Estado local para gerenciar os estilos de texto quando não há estilos externos
+  // Estado local expandido para o novo sistema
   const [textStyles, setTextStyles] = useState<TextStyleOptions>({
     alignment: "center",
     fontFamily: "helvetica",
@@ -34,25 +36,30 @@ const TextStylesTab: React.FC<TextStylesTabProps> = ({
     hasOutline: false,
     outlineColor: "#ffffff",
     outlineWidth: 1,
-    textPosition: "center"
+    textPosition: "center",
+    // Novas propriedades
+    textHierarchy: "primary",
+    fontWeight: "bold",
+    textColor: PREDIAL_CASA_NOVA_COLORS.white,
+    brandStyle: "predial_casa_nova",
+    useIntelligentPositioning: true,
+    overlayIntensity: 0,
+    textCase: "normal",
+    letterSpacing: 1
   });
   
-  // Texto de exemplo para visualização e edição
-  const [sampleText, setSampleText] = useState("Clique para editar este texto de exemplo");
-  // Estado para o modo de edição do texto de exemplo
-  const [isEditing, setIsEditing] = useState(false);
+  const [sampleText, setSampleText] = useState(`VENDA SEU IMÓVEL CONOSCO
+Especialistas em vendas residenciais
+Entre em contato agora`);
 
-  // Usa estilos de texto externos se fornecidos
   const effectiveTextStyles = externalTextStyles || textStyles;
 
-  // Atualiza os estilos locais quando os externos mudarem
   useEffect(() => {
     if (externalTextStyles) {
       setTextStyles(externalTextStyles);
     }
   }, [externalTextStyles]);
 
-  // Função para atualizar estilos de texto
   const updateTextStyles = (updates: Partial<TextStyleOptions>) => {
     const newStyles = { ...effectiveTextStyles, ...updates };
     
@@ -62,332 +69,234 @@ const TextStylesTab: React.FC<TextStylesTabProps> = ({
       setTextStyles(newStyles);
     }
     
-    // Notifica usuário sobre a aplicação dos estilos
     toast({
       title: "Estilos atualizados",
       description: "As configurações de texto foram atualizadas."
     });
   };
 
-  const handleTextChange = (newText: string) => {
-    setSampleText(newText);
-  };
+  const applyBrandTemplate = (templateId: string) => {
+    const template = BRAND_TEMPLATES[templateId];
+    if (!template) return;
 
-  const handleApplyChanges = () => {
-    if (onUpdateTextStyles) {
-      onUpdateTextStyles(effectiveTextStyles);
-    }
-    
-    toast({
-      title: "Alterações aplicadas",
-      description: "Os estilos de texto foram aplicados aos slides."
+    updateTextStyles({
+      brandStyle: templateId as any,
+      textColor: template.textColor,
+      backgroundColor: template.backgroundColor,
+      hasBackground: templateId === "corporate_orange" || templateId === "overlay_text",
+      backgroundOpacity: templateId === "overlay_text" ? 60 : 100,
+      fontWeight: "bold",
+      useIntelligentPositioning: true,
+      overlayIntensity: templateId === "overlay_text" ? 50 : 0
     });
   };
 
-  // Mapear estilos para o componente EditableText
-  const mapToEditableTextStyles = () => {
-    return {
-      isBold: false,
-      isItalic: false,
-      alignment: effectiveTextStyles.alignment as 'left' | 'center' | 'right',
-      fontSize: effectiveTextStyles.fontSize,
-      textColor: "#FFFFFF",
-      hasBackground: effectiveTextStyles.hasBackground,
-      backgroundColor: effectiveTextStyles.backgroundColor,
-      backgroundOpacity: effectiveTextStyles.backgroundOpacity
-    };
-  };
-
   return (
-    <div className="space-y-5">
-      {/* Adiciona visualização de editor de texto */}
-      <div className="mb-4 p-4 bg-gray-700 rounded-md">
-        <div className="flex justify-between items-center mb-2">
-          <h4 className="text-sm font-medium text-white">Preview do Texto</h4>
-          <Button 
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsEditing(!isEditing)}
-          >
-            {isEditing ? "Concluir Edição" : "Editar Texto"}
-          </Button>
+    <div className="space-y-6">
+      {/* Preview do Texto com Sistema Inteligente */}
+      <div className="mb-6 p-4 bg-gray-700 rounded-md">
+        <div className="flex justify-between items-center mb-3">
+          <h4 className="text-sm font-medium text-white flex items-center gap-2">
+            <Type className="h-4 w-4" />
+            Preview Inteligente
+          </h4>
         </div>
         
-        <div className={`p-4 bg-gray-600 rounded-md text-white 
-          ${effectiveTextStyles.hasBackground ? 'bg-opacity-50' : ''} 
-          ${effectiveTextStyles.alignment === 'left' ? 'text-left' : 
-            effectiveTextStyles.alignment === 'right' ? 'text-right' : 'text-center'}`}
-          style={{
-            fontFamily: effectiveTextStyles.fontFamily,
-            fontSize: `${effectiveTextStyles.fontSize}px`,
-            backgroundColor: effectiveTextStyles.hasBackground ? 
-              effectiveTextStyles.backgroundColor : undefined,
-            textShadow: effectiveTextStyles.hasOutline ? 
-              `0 0 ${effectiveTextStyles.outlineWidth}px ${effectiveTextStyles.outlineColor}` : undefined
-          }}
-        >
-          <EditableText 
+        <div className="relative h-40 bg-gray-600 rounded-md overflow-hidden">
+          <IntelligentTextRenderer
             text={sampleText}
-            onTextChange={handleTextChange}
-            styles={mapToEditableTextStyles()}
-            isEditing={isEditing}
-            onStartEditing={() => setIsEditing(true)}
-            onFinishEditing={() => setIsEditing(false)}
-            isSelected={isEditing}
+            textStyles={effectiveTextStyles}
+            imageAnalysis={{ hasDarkAreas: true, hasBrightAreas: true, aspectRatio: "16:9" }}
+            onTextChange={setSampleText}
           />
         </div>
       </div>
 
+      {/* Templates da Marca Predial Casa Nova */}
       <div>
-        <Label className="text-white mb-3 block">Formatação de texto</Label>
-        <div className="flex space-x-2 mb-4">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="flex-1"
-          >
-            <Bold className="h-4 w-4 mr-2" />
-            Negrito
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="flex-1"
-          >
-            <Italic className="h-4 w-4 mr-2" />
-            Itálico
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="flex-1"
-          >
-            <Underline className="h-4 w-4 mr-2" />
-            Sublinhado
-          </Button>
+        <Label className="text-white mb-3 block flex items-center gap-2">
+          <Palette className="h-4 w-4" />
+          Templates Predial Casa Nova
+        </Label>
+        <div className="grid grid-cols-2 gap-3">
+          {Object.values(BRAND_TEMPLATES).map(template => (
+            <Card 
+              key={template.id}
+              className={`p-3 cursor-pointer border-2 transition-all hover:scale-105 ${
+                effectiveTextStyles.brandStyle === template.id 
+                  ? 'border-orange-500 bg-orange-50' 
+                  : 'border-gray-700 hover:border-orange-300'
+              }`}
+              onClick={() => applyBrandTemplate(template.id)}
+            >
+              <div className="text-center">
+                <div 
+                  className="w-full h-12 rounded mb-2 flex items-center justify-center text-xs font-bold"
+                  style={{ 
+                    backgroundColor: template.backgroundColor,
+                    color: template.textColor 
+                  }}
+                >
+                  {template.name}
+                </div>
+                <p className="text-xs text-gray-400">{template.description}</p>
+              </div>
+            </Card>
+          ))}
         </div>
       </div>
 
-      <div>
-        <Label className="text-white mb-3 block">Alinhamento do texto</Label>
-        <div className="flex space-x-2">
-          <Button 
-            variant={effectiveTextStyles.alignment === "left" ? "default" : "outline"} 
-            size="sm" 
-            onClick={() => updateTextStyles({alignment: "left"})}
-            className="flex-1"
-          >
-            <AlignLeft className="h-4 w-4 mr-2" />
-            Esquerda
-          </Button>
-          <Button 
-            variant={effectiveTextStyles.alignment === "center" ? "default" : "outline"} 
-            size="sm" 
-            onClick={() => updateTextStyles({alignment: "center"})}
-            className="flex-1"
-          >
-            <AlignCenter className="h-4 w-4 mr-2" />
-            Centro
-          </Button>
-          <Button 
-            variant={effectiveTextStyles.alignment === "right" ? "default" : "outline"} 
-            size="sm" 
-            onClick={() => updateTextStyles({alignment: "right"})}
-            className="flex-1"
-          >
-            <AlignRight className="h-4 w-4 mr-2" />
-            Direita
-          </Button>
+      {/* Posicionamento Inteligente */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <Label htmlFor="intelligent-positioning" className="text-white flex items-center gap-2">
+            <Zap className="h-4 w-4 text-orange-500" />
+            Posicionamento Inteligente
+          </Label>
+          <Switch 
+            id="intelligent-positioning" 
+            checked={effectiveTextStyles.useIntelligentPositioning}
+            onCheckedChange={(checked) => updateTextStyles({useIntelligentPositioning: checked})}
+          />
         </div>
+        <p className="text-xs text-gray-400">
+          Detecta automaticamente a melhor posição do texto baseado na imagem
+        </p>
       </div>
-      
+
+      {/* Hierarquia de Texto */}
       <div>
-        <Label className="text-white mb-3 block">Posição do texto</Label>
-        <div className="flex space-x-2">
-          <Button 
-            variant={effectiveTextStyles.textPosition === "top" ? "default" : "outline"} 
-            size="sm" 
-            onClick={() => updateTextStyles({textPosition: "top"})}
-            className="flex-1"
-          >
-            <Move className="h-4 w-4 mr-2" />
-            Topo
-          </Button>
-          <Button 
-            variant={effectiveTextStyles.textPosition === "center" ? "default" : "outline"} 
-            size="sm" 
-            onClick={() => updateTextStyles({textPosition: "center"})}
-            className="flex-1"
-          >
-            <Move className="h-4 w-4 mr-2" />
-            Centro
-          </Button>
-          <Button 
-            variant={effectiveTextStyles.textPosition === "bottom" ? "default" : "outline"} 
-            size="sm" 
-            onClick={() => updateTextStyles({textPosition: "bottom"})}
-            className="flex-1"
-          >
-            <Move className="h-4 w-4 mr-2" />
-            Base
-          </Button>
-        </div>
+        <Label className="text-white mb-3 block">Hierarquia do Texto</Label>
+        <Select 
+          value={effectiveTextStyles.textHierarchy} 
+          onValueChange={(value: any) => updateTextStyles({textHierarchy: value})}
+        >
+          <SelectTrigger className="w-full bg-gray-700 border-gray-600 text-white">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="bg-gray-700 border-gray-600">
+            <SelectItem value="primary">Título Principal</SelectItem>
+            <SelectItem value="secondary">Texto Secundário</SelectItem>
+            <SelectItem value="cta">Call-to-Action</SelectItem>
+            <SelectItem value="brand">Elemento de Marca</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
-      
+
+      {/* Peso da Fonte */}
       <div>
-        <Label className="text-white mb-3 block">Estilo da fonte</Label>
+        <Label className="text-white mb-3 block">Peso da Fonte</Label>
         <RadioGroup 
-          value={effectiveTextStyles.fontFamily} 
-          onValueChange={(value) => updateTextStyles({fontFamily: value as 'helvetica' | 'fixture' | 'serif' | 'mono'})}
+          value={effectiveTextStyles.fontWeight} 
+          onValueChange={(value: any) => updateTextStyles({fontWeight: value})}
           className="grid grid-cols-2 gap-4"
         >
-          <Card className="flex items-center space-x-2 p-3 cursor-pointer border border-gray-700 hover:border-blue-500 hover:bg-gray-700 data-[state=checked]:border-blue-500">
-            <RadioGroupItem value="helvetica" id="font_helvetica" className="sr-only" />
-            <Label htmlFor="font_helvetica" className="flex flex-col items-center cursor-pointer w-full">
-              <div className="text-lg font-helvetica">Aa</div>
-              <span className="text-sm mt-1">Helvetica</span>
-            </Label>
-          </Card>
-          
-          <Card className="flex items-center space-x-2 p-3 cursor-pointer border border-gray-700 hover:border-blue-500 hover:bg-gray-700 data-[state=checked]:border-blue-500">
-            <RadioGroupItem value="fixture" id="font_fixture" className="sr-only" />
-            <Label htmlFor="font_fixture" className="flex flex-col items-center cursor-pointer w-full">
-              <div className="text-lg font-fixture">Aa</div>
-              <span className="text-sm mt-1">Fixture</span>
-            </Label>
-          </Card>
-          
-          <Card className="flex items-center space-x-2 p-3 cursor-pointer border border-gray-700 hover:border-blue-500 hover:bg-gray-700 data-[state=checked]:border-blue-500">
-            <RadioGroupItem value="serif" id="font_serif" className="sr-only" />
-            <Label htmlFor="font_serif" className="flex flex-col items-center cursor-pointer w-full">
-              <div className="text-lg font-serif">Aa</div>
-              <span className="text-sm mt-1">Serif</span>
-            </Label>
-          </Card>
-          
-          <Card className="flex items-center space-x-2 p-3 cursor-pointer border border-gray-700 hover:border-blue-500 hover:bg-gray-700 data-[state=checked]:border-blue-500">
-            <RadioGroupItem value="mono" id="font_mono" className="sr-only" />
-            <Label htmlFor="font_mono" className="flex flex-col items-center cursor-pointer w-full">
-              <div className="text-lg font-mono">Aa</div>
-              <span className="text-sm mt-1">Monospace</span>
-            </Label>
-          </Card>
+          {[
+            { value: "light", label: "Light", weight: "300" },
+            { value: "regular", label: "Regular", weight: "400" },
+            { value: "bold", label: "Bold", weight: "700" },
+            { value: "extra-bold", label: "Extra Bold", weight: "800" }
+          ].map(option => (
+            <Card key={option.value} className="flex items-center space-x-2 p-3 cursor-pointer border border-gray-700 hover:border-orange-500">
+              <RadioGroupItem value={option.value} id={`weight_${option.value}`} className="sr-only" />
+              <Label htmlFor={`weight_${option.value}`} className="flex flex-col items-center cursor-pointer w-full">
+                <div className="text-lg" style={{ fontWeight: option.weight }}>Aa</div>
+                <span className="text-sm mt-1">{option.label}</span>
+              </Label>
+            </Card>
+          ))}
         </RadioGroup>
       </div>
-      
-      {/* Font Size Control */}
+
+      {/* Caso do Texto */}
+      <div>
+        <Label className="text-white mb-3 block">Transformação do Texto</Label>
+        <div className="flex space-x-2">
+          {[
+            { value: "normal", label: "Normal" },
+            { value: "uppercase", label: "MAIÚSCULA" },
+            { value: "lowercase", label: "minúscula" }
+          ].map(option => (
+            <Button 
+              key={option.value}
+              variant={effectiveTextStyles.textCase === option.value ? "default" : "outline"} 
+              size="sm" 
+              onClick={() => updateTextStyles({textCase: option.value as any})}
+              className="flex-1"
+            >
+              {option.label}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      {/* Espaçamento entre Letras */}
       <div>
         <div className="flex justify-between mb-1">
-          <Label className="text-white text-sm">Tamanho da fonte</Label>
-          <span className="text-sm text-gray-300">{effectiveTextStyles.fontSize}px</span>
+          <Label className="text-white text-sm">Espaçamento entre Letras</Label>
+          <span className="text-sm text-gray-300">{effectiveTextStyles.letterSpacing}em</span>
         </div>
         <Slider 
-          value={[effectiveTextStyles.fontSize]} 
-          min={12} 
-          max={36} 
-          step={1} 
-          onValueChange={(value) => updateTextStyles({fontSize: value[0]})}
+          value={[effectiveTextStyles.letterSpacing]} 
+          min={-0.1} 
+          max={0.3} 
+          step={0.05} 
+          onValueChange={(value) => updateTextStyles({letterSpacing: value[0]})}
           className="mt-2"
         />
       </div>
-      
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <Label htmlFor="text-bg-toggle" className="text-white">Fundo do texto</Label>
-          <Switch 
-            id="text-bg-toggle" 
-            checked={effectiveTextStyles.hasBackground}
-            onCheckedChange={(checked) => updateTextStyles({hasBackground: checked})}
-          />
+
+      {/* Overlay Inteligente */}
+      <div>
+        <div className="flex justify-between mb-1">
+          <Label className="text-white text-sm">Intensidade do Overlay</Label>
+          <span className="text-sm text-gray-300">{effectiveTextStyles.overlayIntensity}%</span>
         </div>
-        
-        {effectiveTextStyles.hasBackground && (
-          <>
-            <div>
-              <Label className="text-white text-sm mb-2 block">Cor do fundo</Label>
-              <div className="grid grid-cols-6 gap-2">
-                {["#000000", "#ffffff", "#ff0000", "#0000ff", "#ffff00", "#00ff00"].map(color => (
-                  <Button 
-                    key={color}
-                    className="h-8 w-8 rounded-md p-0 border-2"
-                    style={{ 
-                      backgroundColor: color,
-                      borderColor: effectiveTextStyles.backgroundColor === color ? '#3b82f6' : 'transparent'
-                    }}
-                    onClick={() => updateTextStyles({backgroundColor: color})}
-                  />
-                ))}
-              </div>
-            </div>
-            
-            <div>
-              <div className="flex justify-between mb-1">
-                <Label className="text-white text-sm">Opacidade</Label>
-                <span className="text-sm text-gray-300">{effectiveTextStyles.backgroundOpacity}%</span>
-              </div>
-              <Slider 
-                value={[effectiveTextStyles.backgroundOpacity]} 
-                min={0} 
-                max={100} 
-                step={5} 
-                onValueChange={(value) => updateTextStyles({backgroundOpacity: value[0]})}
-              />
-            </div>
-          </>
-        )}
+        <Slider 
+          value={[effectiveTextStyles.overlayIntensity]} 
+          min={0} 
+          max={100} 
+          step={5} 
+          onValueChange={(value) => updateTextStyles({overlayIntensity: value[0]})}
+          className="mt-2"
+        />
       </div>
-      
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <Label htmlFor="text-outline-toggle" className="text-white">Contorno do texto</Label>
-          <Switch 
-            id="text-outline-toggle" 
-            checked={effectiveTextStyles.hasOutline}
-            onCheckedChange={(checked) => updateTextStyles({hasOutline: checked})}
-          />
+
+      {/* Cores da Marca */}
+      <div>
+        <Label className="text-white text-sm mb-2 block">Cores da Predial Casa Nova</Label>
+        <div className="grid grid-cols-6 gap-2">
+          {Object.entries(PREDIAL_CASA_NOVA_COLORS).map(([name, color]) => (
+            <Button 
+              key={name}
+              className="h-8 w-8 rounded-md p-0 border-2"
+              style={{ 
+                backgroundColor: color,
+                borderColor: effectiveTextStyles.textColor === color ? '#3b82f6' : 'transparent'
+              }}
+              onClick={() => updateTextStyles({textColor: color})}
+              title={name}
+            />
+          ))}
         </div>
-        
-        {effectiveTextStyles.hasOutline && (
-          <>
-            <div>
-              <Label className="text-white text-sm mb-2 block">Cor do contorno</Label>
-              <div className="grid grid-cols-6 gap-2">
-                {["#ffffff", "#000000", "#ff0000", "#0000ff", "#ffff00", "#00ff00"].map(color => (
-                  <Button 
-                    key={color}
-                    className="h-8 w-8 rounded-md p-0 border-2"
-                    style={{ 
-                      backgroundColor: color,
-                      borderColor: effectiveTextStyles.outlineColor === color ? '#3b82f6' : 'transparent'
-                    }}
-                    onClick={() => updateTextStyles({outlineColor: color})}
-                  />
-                ))}
-              </div>
-            </div>
-            
-            <div>
-              <div className="flex justify-between mb-1">
-                <Label className="text-white text-sm">Espessura</Label>
-                <span className="text-sm text-gray-300">{effectiveTextStyles.outlineWidth}px</span>
-              </div>
-              <Slider 
-                value={[effectiveTextStyles.outlineWidth]} 
-                min={1} 
-                max={5} 
-                step={1} 
-                onValueChange={(value) => updateTextStyles({outlineWidth: value[0]})}
-              />
-            </div>
-          </>
-        )}
       </div>
 
       <Separator className="border-gray-700 my-4" />
       
       <div className="flex justify-end">
-        <Button onClick={handleApplyChanges} className="bg-gradient-to-r from-purple-500 to-blue-500">
-          Aplicar estilos de texto
+        <Button 
+          onClick={() => {
+            if (onUpdateTextStyles) {
+              onUpdateTextStyles(effectiveTextStyles);
+            }
+            toast({
+              title: "Estilos aplicados",
+              description: "Os estilos da Predial Casa Nova foram aplicados aos slides."
+            });
+          }} 
+          className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700"
+        >
+          Aplicar Estilo Predial Casa Nova
         </Button>
       </div>
     </div>

@@ -45,3 +45,51 @@ export const getLayoutDisplayName = (layoutType: string) => {
     default: return "Padrão (16:9)";
   }
 };
+
+// Novas funções para o sistema Predial Casa Nova
+export const getPredialCasaNovaLayout = (contentType: string) => {
+  const layouts = {
+    "property_showcase": {
+      aspectRatio: "aspect-[4/3]",
+      displayName: "Showcase de Imóvel",
+      textPosition: "bottom",
+      overlayIntensity: 60
+    },
+    "agent_contact": {
+      aspectRatio: "aspect-square", 
+      displayName: "Contato do Corretor",
+      textPosition: "center",
+      overlayIntensity: 40
+    },
+    "company_branding": {
+      aspectRatio: "aspect-[16/9]",
+      displayName: "Branding da Empresa", 
+      textPosition: "top",
+      overlayIntensity: 30
+    },
+    "call_to_action": {
+      aspectRatio: "aspect-[5/4]",
+      displayName: "Call-to-Action",
+      textPosition: "center", 
+      overlayIntensity: 50
+    }
+  };
+  
+  return layouts[contentType as keyof typeof layouts] || layouts["property_showcase"];
+};
+
+export const extractTextHierarchy = (text: string) => {
+  const lines = text.split('\n').filter(line => line.trim());
+  
+  return lines.map((line, index) => {
+    if (line.toLowerCase().includes('venda') || line.toLowerCase().includes('compra')) {
+      return { type: 'primary', content: line };
+    } else if (line.toLowerCase().includes('contato') || line.toLowerCase().includes('whatsapp')) {
+      return { type: 'cta', content: line };
+    } else if (line.toLowerCase().includes('predial') || line.toLowerCase().includes('casa nova')) {
+      return { type: 'brand', content: line };
+    } else {
+      return { type: 'secondary', content: line };
+    }
+  });
+};
