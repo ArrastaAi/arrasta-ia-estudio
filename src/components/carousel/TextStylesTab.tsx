@@ -84,7 +84,7 @@ const TextStylesTab: React.FC<TextStylesTabProps> = ({
           {Object.entries(INSTAGRAM_COLORS).map(([name, color]) => (
             <div key={name} className="flex flex-col items-center">
               <button
-                className={`w-12 h-12 rounded-lg border-3 hover:scale-110 transition-transform ${
+                className={`w-12 h-12 rounded-lg border-2 hover:scale-110 transition-transform ${
                   textStyles?.textColor === color 
                     ? 'border-white ring-2 ring-purple-500' 
                     : 'border-gray-600 hover:border-white'

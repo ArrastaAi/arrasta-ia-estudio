@@ -40,6 +40,7 @@ const DraggableText: React.FC<DraggableTextProps> = ({
   const elementRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [localText, setLocalText] = useState(text);
+  const [isDragMode, setIsDragMode] = useState(false);
 
   const { 
     isDragging, 
@@ -65,12 +66,40 @@ const DraggableText: React.FC<DraggableTextProps> = ({
     }
   }, [isEditing]);
 
+  const handleMouseDownOnElement = (e: React.MouseEvent) => {
+    console.log('[DraggableText] Mouse down:', { isEditing, isSelected, isDragMode });
+    
+    if (isEditing) {
+      e.stopPropagation();
+      return;
+    }
+
+    // Duplo clique para editar
+    if (e.detail === 2) {
+      e.stopPropagation();
+      onEdit();
+      return;
+    }
+
+    // Clique simples para selecionar
+    if (!isSelected) {
+      e.stopPropagation();
+      onSelect();
+      return;
+    }
+
+    // Se já está selecionado, permitir arrastar
+    setIsDragMode(true);
+    handleMouseDown(e);
+  };
+
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!isSelected) {
-      onSelect();
-    } else if (!isEditing) {
-      onEdit();
+    if (!isEditing && !isDragging) {
+      if (!isSelected) {
+        console.log('[DraggableText] Selecionando elemento:', id);
+        onSelect();
+      }
     }
   };
 
@@ -83,16 +112,16 @@ const DraggableText: React.FC<DraggableTextProps> = ({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      onEdit(); // Sai do modo de edição
+      onEdit();
     }
     if (e.key === 'Escape') {
-      setLocalText(text); // Reverte mudanças
-      onEdit(); // Sai do modo de edição
+      setLocalText(text);
+      onEdit();
     }
   };
 
   const handleBlur = () => {
-    onEdit(); // Sai do modo de edição ao perder foco
+    onEdit();
   };
 
   const getFontFamily = (fontFamily?: string) => {
@@ -122,27 +151,33 @@ const DraggableText: React.FC<DraggableTextProps> = ({
     fontFamily: getFontFamily(styles.fontFamily)
   };
 
-  console.log('[DraggableText] Renderizando com estilos:', {
+  const containerClasses = `
+    absolute transition-all duration-200
+    ${isSelected ? 'ring-2 ring-blue-500 ring-offset-2 ring-offset-transparent' : ''}
+    ${isEditing ? 'cursor-text' : isDragMode || isDragging ? 'cursor-move' : 'cursor-pointer'}
+    ${isEditing ? '' : 'select-none'}
+  `.trim();
+
+  console.log('[DraggableText] Renderizando:', {
     id,
     fontFamily: styles.fontFamily,
     resolvedFontFamily: getFontFamily(styles.fontFamily),
     isSelected,
+    isEditing,
     textColor: styles.textColor
   });
 
   return (
     <div
       ref={elementRef}
-      className={`absolute cursor-move select-none ${
-        isSelected ? 'ring-2 ring-blue-500' : ''
-      }`}
+      className={containerClasses}
       style={{
         ...style,
         zIndex: isSelected ? 20 : 10,
         touchAction: isDragging ? 'none' : 'auto'
       }}
       onClick={handleClick}
-      onMouseDown={!isEditing ? handleMouseDown : undefined}
+      onMouseDown={!isEditing ? handleMouseDownOnElement : undefined}
       onTouchStart={!isEditing ? handleTouchStart : undefined}
     >
       {isEditing ? (
@@ -153,21 +188,28 @@ const DraggableText: React.FC<DraggableTextProps> = ({
           onKeyDown={handleKeyDown}
           onBlur={handleBlur}
           style={textStyle}
-          className="min-w-[100px] min-h-[40px]"
+          className="min-w-[100px] min-h-[40px] bg-transparent resize-none"
           rows={1}
         />
       ) : (
         <div
           style={textStyle}
-          className="min-w-[100px] min-h-[40px] cursor-text"
+          className="min-w-[100px] min-h-[40px] cursor-pointer"
         >
-          {localText || 'Clique para editar'}
+          {localText || 'Clique duas vezes para editar'}
         </div>
       )}
       
       {/* Indicador visual quando selecionado */}
       {isSelected && !isEditing && (
-        <div className="absolute -top-2 -right-2 w-4 h-4 bg-blue-500 rounded-full border-2 border-white" />
+        <div className="absolute -top-2 -right-2 w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-lg animate-pulse" />
+      )}
+      
+      {/* Dica de interação */}
+      {isSelected && !isEditing && (
+        <div className="absolute -bottom-6 left-0 text-xs text-blue-400 whitespace-nowrap">
+          Duplo clique para editar
+        </div>
       )}
     </div>
   );

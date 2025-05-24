@@ -3,21 +3,18 @@ import React from 'react';
 import SimpleTextEditor from './text-editor/SimpleTextEditor';
 
 interface TextStyles {
-  isBold: boolean;
-  isItalic: boolean;
-  alignment: 'left' | 'center' | 'right';
   fontSize: number;
   textColor: string;
-  hasBackground: boolean;
-  backgroundColor: string;
-  backgroundOpacity: number;
+  fontWeight: 'normal' | 'bold';
+  textAlign: 'left' | 'center' | 'right';
+  fontFamily?: string;
 }
 
 interface TextContainerProps {
   initialText: string;
-  initialStyles: TextStyles;
+  initialStyles: any;
   onTextChange: (newText: string) => void;
-  activeTextStyle?: any; // Receber estilos ativos do Editor
+  activeTextStyle?: any;
 }
 
 const TextContainer: React.FC<TextContainerProps> = ({
@@ -30,10 +27,34 @@ const TextContainer: React.FC<TextContainerProps> = ({
     activeTextStyle
   });
 
+  // Converter TextStyleOptions para TextStyles usado pelo editor
+  const convertToEditorStyles = (styleOptions: any): TextStyles => {
+    if (!styleOptions) {
+      return {
+        fontSize: 24,
+        textColor: '#FFFFFF',
+        fontWeight: 'bold',
+        textAlign: 'center',
+        fontFamily: 'helvetica'
+      };
+    }
+
+    return {
+      fontSize: styleOptions.fontSize || 24,
+      textColor: styleOptions.textColor || '#FFFFFF',
+      fontWeight: styleOptions.fontWeight === 'bold' ? 'bold' : 'normal',
+      textAlign: styleOptions.alignment || 'center',
+      fontFamily: styleOptions.fontFamily || 'helvetica'
+    };
+  };
+
   const handleTextChange = (newText: string) => {
     console.log('[TextContainer] Texto alterado no editor:', newText);
     onTextChange(newText);
   };
+
+  const editorStyles = convertToEditorStyles(activeTextStyle);
+  console.log('[TextContainer] Estilos convertidos para o editor:', editorStyles);
 
   return (
     <div className="w-full h-full relative">
@@ -41,7 +62,7 @@ const TextContainer: React.FC<TextContainerProps> = ({
         initialText={initialText}
         onTextChange={handleTextChange}
         className="min-h-[300px] w-full h-full"
-        globalTextStyles={activeTextStyle} // Passar estilos globais
+        globalTextStyles={editorStyles}
       />
     </div>
   );

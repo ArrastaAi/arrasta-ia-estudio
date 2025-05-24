@@ -22,7 +22,7 @@ interface SimpleTextEditorProps {
   initialText?: string;
   onTextChange?: (allTexts: string) => void;
   className?: string;
-  globalTextStyles?: any; // Receber estilos globais do painel lateral
+  globalTextStyles?: TextStyles;
 }
 
 const SimpleTextEditor: React.FC<SimpleTextEditorProps> = ({
@@ -47,20 +47,12 @@ const SimpleTextEditor: React.FC<SimpleTextEditorProps> = ({
   useEffect(() => {
     if (globalTextStyles) {
       console.log('[SimpleTextEditor] Recebendo estilos globais:', globalTextStyles);
-      const newGlobalStyles = {
-        fontSize: globalTextStyles.fontSize || 24,
-        textColor: globalTextStyles.textColor || '#FFFFFF',
-        fontWeight: globalTextStyles.fontWeight || 'bold',
-        textAlign: globalTextStyles.alignment || 'center',
-        fontFamily: globalTextStyles.fontFamily || 'helvetica'
-      };
-      console.log('[SimpleTextEditor] Aplicando novos estilos globais:', newGlobalStyles);
-      setGlobalStyles(newGlobalStyles);
+      setGlobalStyles(globalTextStyles);
 
       // Aplicar aos elementos selecionados
       if (selectedElementId) {
         console.log('[SimpleTextEditor] Aplicando estilos ao elemento selecionado:', selectedElementId);
-        updateElementStyles(selectedElementId, newGlobalStyles);
+        updateElementStyles(selectedElementId, globalTextStyles);
       }
     }
   }, [globalTextStyles, selectedElementId]);
@@ -75,6 +67,7 @@ const SimpleTextEditor: React.FC<SimpleTextEditorProps> = ({
         styles: globalStyles
       };
       setTextElements([newElement]);
+      setSelectedElementId(newElement.id);
     }
   }, [initialText, textElements.length, globalStyles]);
 
@@ -133,6 +126,21 @@ const SimpleTextEditor: React.FC<SimpleTextEditorProps> = ({
     }
   };
 
+  const handleElementSelect = (id: string) => {
+    console.log('[SimpleTextEditor] Selecionando elemento:', id);
+    setSelectedElementId(id);
+    setEditingElementId(null);
+  };
+
+  const handleElementEdit = (id: string) => {
+    console.log('[SimpleTextEditor] Editando elemento:', id);
+    if (editingElementId === id) {
+      setEditingElementId(null);
+    } else {
+      setEditingElementId(id);
+    }
+  };
+
   const handleContainerClick = () => {
     setSelectedElementId(null);
     setEditingElementId(null);
@@ -151,7 +159,7 @@ const SimpleTextEditor: React.FC<SimpleTextEditorProps> = ({
   // Atalhos de teclado
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (editingElementId) return; // Não interferir durante edição
+      if (editingElementId) return;
 
       if (e.key === 'Delete' || e.key === 'Backspace') {
         if (selectedElementId) {
@@ -180,7 +188,7 @@ const SimpleTextEditor: React.FC<SimpleTextEditorProps> = ({
       {/* Container principal */}
       <div 
         ref={containerRef}
-        className="w-full h-full relative overflow-hidden"
+        className="w-full h-full relative overflow-hidden bg-transparent"
         onClick={handleContainerClick}
       >
         {textElements.map(element => (
@@ -192,22 +200,23 @@ const SimpleTextEditor: React.FC<SimpleTextEditorProps> = ({
             styles={element.styles}
             isSelected={selectedElementId === element.id}
             isEditing={editingElementId === element.id}
-            onSelect={() => {
-              console.log('[SimpleTextEditor] Selecionando elemento:', element.id);
-              setSelectedElementId(element.id);
-            }}
-            onEdit={() => {
-              if (editingElementId === element.id) {
-                setEditingElementId(null);
-              } else {
-                setEditingElementId(element.id);
-              }
-            }}
+            onSelect={() => handleElementSelect(element.id)}
+            onEdit={() => handleElementEdit(element.id)}
             onTextChange={(newText) => updateElementText(element.id, newText)}
             onPositionChange={(newPosition) => updateElementPosition(element.id, newPosition)}
             containerRef={containerRef}
           />
         ))}
+        
+        {/* Instrução quando não há texto */}
+        {textElements.length === 0 && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-gray-400 text-center">
+              <p className="text-lg mb-2">Clique no botão + para adicionar texto</p>
+              <p className="text-sm">ou digite algo para começar</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Controles simples */}

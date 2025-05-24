@@ -29,21 +29,21 @@ const FONT_OPTIONS: FontOption[] = [
     name: 'font-pacifico',
     displayName: 'Pacifico',
     previewText: 'Aa',
-    fallback: 'cursive'
+    fallback: 'Pacifico, cursive'
   },
   {
     key: 'bebas',
     name: 'font-bebas',
     displayName: 'Bebas',
     previewText: 'Aa',
-    fallback: 'Impact, sans-serif'
+    fallback: '"Bebas Neue", Impact, sans-serif'
   },
   {
     key: 'brusher',
     name: 'font-dancing',
     displayName: 'Brusher',
     previewText: 'Aa',
-    fallback: 'Dancing Script, cursive'
+    fallback: '"Dancing Script", cursive'
   },
   {
     key: 'selima',
@@ -84,28 +84,30 @@ const FontSelector: React.FC<FontSelectorProps> = ({
     );
   }
 
-  // Versão completa para o painel lateral com fundo escuro
+  // Versão para o painel lateral - mesmo tamanho das cores (w-12 h-12)
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <div className="grid grid-cols-5 gap-3">
       {FONT_OPTIONS.map(font => (
-        <Button
-          key={font.key}
-          variant={selectedFont === font.key ? "default" : "outline"}
-          onClick={() => handleFontChange(font.key)}
-          className={`h-16 flex flex-col items-center justify-center transition-all ${
-            selectedFont === font.key 
-              ? 'border-purple-500 bg-purple-600 text-white shadow-lg' 
-              : 'border-gray-600 hover:border-purple-400 text-white bg-gray-800 hover:bg-gray-700'
-          }`}
-        >
-          <span 
-            className="text-xl text-white mb-1" 
-            style={{ fontFamily: font.fallback }}
+        <div key={font.key} className="flex flex-col items-center">
+          <button
+            onClick={() => handleFontChange(font.key)}
+            className={`w-12 h-12 rounded-lg border-2 hover:scale-110 transition-all flex items-center justify-center ${
+              selectedFont === font.key 
+                ? 'border-white ring-2 ring-purple-500 bg-purple-600' 
+                : 'border-gray-600 hover:border-white bg-gray-800 hover:bg-gray-700'
+            }`}
           >
-            {font.previewText}
+            <span 
+              className="text-lg text-white font-medium" 
+              style={{ fontFamily: font.fallback }}
+            >
+              {font.previewText}
+            </span>
+          </button>
+          <span className="text-xs text-gray-400 mt-1 text-center">
+            {font.displayName}
           </span>
-          <span className="text-xs text-gray-300">{font.displayName}</span>
-        </Button>
+        </div>
       ))}
     </div>
   );
