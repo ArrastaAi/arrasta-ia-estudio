@@ -32,7 +32,7 @@ export const useTextGeneration = () => {
           audience: params.targetAudience || "Público geral",
           goal: "educar",
           content: "",
-          slideCount: 1
+          slideCount: 9 // Always request 9 slides
         })
       });
 

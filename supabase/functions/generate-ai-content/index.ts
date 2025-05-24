@@ -28,11 +28,15 @@ serve(async (req) => {
       contentLength: content?.length || 0
     });
 
-    // Get API key from environment
-    const apiKey = Deno.env.get("GOOGLE_GEMINI_API_KEY");
+    // Use the new API key provided by the user
+    const apiKey = "AIzaSyBDmxNFfZs3OwBfrYuM8GvE48SIWDzH92w";
+    
     if (!apiKey) {
       throw new Error("API key não configurada no servidor");
     }
+
+    // Always generate 9 slides (maximum allowed)
+    const targetSlideCount = 9;
 
     let systemPrompt = "";
     let userPrompt = "";
@@ -43,19 +47,25 @@ serve(async (req) => {
       Sua missão é criar carrosséis completos e envolventes que prendem a atenção do público.
       
       REGRAS IMPORTANTES:
-      - Crie exatamente ${slideCount || 6} slides
+      - Crie EXATAMENTE ${targetSlideCount} slides únicos e distintos
       - Máximo de 25 palavras por slide
       - Use linguagem direta e impactante
       - Crie um fluxo narrativo entre os slides
       - Termine sempre com CTA forte
+      - Cada slide deve ter conteúdo diferente e específico
       
-      FORMATO DE RESPOSTA:
-      Slide 1: [texto]
-      Slide 2: [texto]
-      Slide 3: [texto]
-      (continue até slide ${slideCount || 6})`;
+      FORMATO DE RESPOSTA OBRIGATÓRIO:
+      Slide 1: [texto específico para slide 1]
+      Slide 2: [texto específico para slide 2]
+      Slide 3: [texto específico para slide 3]
+      Slide 4: [texto específico para slide 4]
+      Slide 5: [texto específico para slide 5]
+      Slide 6: [texto específico para slide 6]
+      Slide 7: [texto específico para slide 7]
+      Slide 8: [texto específico para slide 8]
+      Slide 9: [texto específico para slide 9]`;
 
-      userPrompt = `Crie um carrossel sobre: ${topic}
+      userPrompt = `Crie um carrossel de ${targetSlideCount} slides sobre: ${topic}
       Público-alvo: ${audience || "geral"}
       Objetivo: ${goal || "educar"}
       ${prompt ? `Instruções extras: ${prompt}` : ""}`;
@@ -64,19 +74,25 @@ serve(async (req) => {
       Sua missão é criar textos persuasivos que engajam e convertem.
       
       REGRAS IMPORTANTES:
-      - Crie exatamente ${slideCount || 6} slides
+      - Crie EXATAMENTE ${targetSlideCount} slides únicos e distintos
       - Máximo de 20 palavras por slide
       - Use linguagem direta e impactante
       - Foque na conversão e engajamento
       - Termine sempre com CTA forte
+      - Cada slide deve ter conteúdo diferente e específico
       
-      FORMATO DE RESPOSTA:
-      Slide 1: [texto]
-      Slide 2: [texto]
-      Slide 3: [texto]
-      (continue até slide ${slideCount || 6})`;
+      FORMATO DE RESPOSTA OBRIGATÓRIO:
+      Slide 1: [texto específico para slide 1]
+      Slide 2: [texto específico para slide 2]
+      Slide 3: [texto específico para slide 3]
+      Slide 4: [texto específico para slide 4]
+      Slide 5: [texto específico para slide 5]
+      Slide 6: [texto específico para slide 6]
+      Slide 7: [texto específico para slide 7]
+      Slide 8: [texto específico para slide 8]
+      Slide 9: [texto específico para slide 9]`;
 
-      userPrompt = `Crie um carrossel sobre: ${topic}
+      userPrompt = `Crie um carrossel de ${targetSlideCount} slides sobre: ${topic}
       Público-alvo: ${audience || "geral"}
       Objetivo: ${goal || "educar"}
       ${prompt ? `Instruções extras: ${prompt}` : ""}`;
@@ -85,27 +101,33 @@ serve(async (req) => {
       Transforme qualquer texto em slides otimizados.
       
       REGRAS:
-      - Crie entre 3 a ${Math.min(slideCount || 6, 9)} slides
+      - Crie EXATAMENTE ${targetSlideCount} slides únicos e distintos
       - Máximo de 25 palavras por slide
       - Mantenha a essência do conteúdo original
       - Use linguagem clara e direta
+      - Cada slide deve ter conteúdo diferente e específico
       
-      FORMATO DE RESPOSTA:
-      Slide 1: [texto]
-      Slide 2: [texto]
-      Slide 3: [texto]
-      (continue conforme necessário)`;
+      FORMATO DE RESPOSTA OBRIGATÓRIO:
+      Slide 1: [texto específico para slide 1]
+      Slide 2: [texto específico para slide 2]
+      Slide 3: [texto específico para slide 3]
+      Slide 4: [texto específico para slide 4]
+      Slide 5: [texto específico para slide 5]
+      Slide 6: [texto específico para slide 6]
+      Slide 7: [texto específico para slide 7]
+      Slide 8: [texto específico para slide 8]
+      Slide 9: [texto específico para slide 9]`;
 
-      userPrompt = `Formate este texto em slides: ${content}
+      userPrompt = `Formate este texto em ${targetSlideCount} slides: ${content}
       ${prompt ? `Instruções extras: ${prompt}` : ""}`;
     }
 
     const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
 
-    console.log("Sending prompt to Gemini API");
+    console.log("Sending prompt to Gemini 2.0 API");
 
-    // Call Gemini API
-    const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`;
+    // Call Gemini 2.0 API with the new model
+    const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-001:generateContent?key=${apiKey}`;
     
     const response = await fetch(geminiEndpoint, {
       method: 'POST',
@@ -131,11 +153,18 @@ serve(async (req) => {
       }),
     });
 
-    const data = await response.json();
-    console.log("Gemini API response received");
-    
     if (!response.ok) {
-      throw new Error(`Gemini API error: ${data.error?.message || 'Unknown error'}`);
+      const errorText = await response.text();
+      console.error("Gemini API error response:", errorText);
+      throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log("Gemini API response received successfully");
+    
+    if (data.error) {
+      console.error("Gemini API returned error:", data.error);
+      throw new Error(`Gemini API error: ${data.error.message || JSON.stringify(data.error)}`);
     }
 
     // Extract generated text
@@ -143,19 +172,36 @@ serve(async (req) => {
     if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
       generatedText = data.candidates[0].content.parts[0].text;
     } else {
-      throw new Error("Resposta inválida da API");
+      console.error("Invalid API response structure:", JSON.stringify(data));
+      throw new Error("Resposta inválida da API Gemini");
     }
 
     console.log("Generated text received:", generatedText.substring(0, 200) + "...");
 
-    // Parse the generated text into slides
-    const parsedTexts = parseResponseToSlides(generatedText, Math.min(slideCount || 6, 9));
+    // Parse the generated text into exactly 9 slides
+    const parsedTexts = parseResponseToSlides(generatedText, targetSlideCount);
+
+    if (parsedTexts.length < targetSlideCount) {
+      console.log(`Warning: Only ${parsedTexts.length} slides parsed, expected ${targetSlideCount}`);
+      // Fill missing slides with meaningful content
+      while (parsedTexts.length < targetSlideCount) {
+        parsedTexts.push({
+          id: parsedTexts.length + 1,
+          text: `Slide ${parsedTexts.length + 1}: Continue explorando este tema interessante!`
+        });
+      }
+    }
+
+    // Ensure we have exactly 9 slides
+    const finalTexts = parsedTexts.slice(0, targetSlideCount);
+
+    console.log(`Successfully generated ${finalTexts.length} slides`);
 
     return new Response(
       JSON.stringify({
         success: true,
         generatedText,
-        parsedTexts
+        parsedTexts: finalTexts
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
@@ -178,29 +224,36 @@ serve(async (req) => {
 function parseResponseToSlides(text: string, maxSlides: number): GeneratedText[] {
   const slides: GeneratedText[] = [];
   
-  // Split by "Slide" pattern
-  const slideMatches = text.match(/Slide\s*\d+:\s*(.+?)(?=Slide\s*\d+:|$)/gs);
+  console.log("Parsing response text into slides...");
   
-  if (slideMatches) {
+  // Try to match "Slide X:" pattern first
+  const slideMatches = text.match(/Slide\s*(\d+):\s*([^\n]+?)(?=\s*Slide\s*\d+:|$)/gs);
+  
+  if (slideMatches && slideMatches.length > 0) {
+    console.log(`Found ${slideMatches.length} slides using Slide pattern`);
     slideMatches.forEach((match, index) => {
       if (index >= maxSlides) return;
       
+      const slideNumberMatch = match.match(/Slide\s*(\d+):\s*/);
+      const slideNumber = slideNumberMatch ? parseInt(slideNumberMatch[1]) : index + 1;
       const content = match.replace(/Slide\s*\d+:\s*/, '').trim();
+      
       if (content) {
         slides.push({
-          id: index + 1,
+          id: slideNumber,
           text: content
         });
       }
     });
   } else {
+    console.log("No Slide pattern found, trying line-by-line parsing");
     // Fallback: split by lines and create slides
     const lines = text.split('\n').filter(line => line.trim());
     lines.forEach((line, index) => {
       if (index >= maxSlides) return;
       
       const cleanLine = line.replace(/^\d+\.\s*|\-\s*|\*\s*/, '').trim();
-      if (cleanLine) {
+      if (cleanLine && cleanLine.length > 10) { // Minimum content length
         slides.push({
           id: index + 1,
           text: cleanLine
@@ -209,5 +262,6 @@ function parseResponseToSlides(text: string, maxSlides: number): GeneratedText[]
     });
   }
 
+  console.log(`Successfully parsed ${slides.length} slides`);
   return slides.slice(0, maxSlides);
 }

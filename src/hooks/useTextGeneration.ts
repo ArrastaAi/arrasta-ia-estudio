@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { parseRawText } from "@/components/carousel/ai-text-generator/textParser";
@@ -113,14 +112,7 @@ export const useTextGeneration = (onApplyTexts: (texts: GeneratedText[]) => void
       return data;
     } catch (error) {
       console.error('Erro ao chamar Edge Function do Supabase:', error);
-      
-      // Fallback para texto simulado baseado no agente
-      const simulatedTexts = generateFallbackTexts(requestData.agent, requestData.topic);
-      return {
-        success: true,
-        parsedTexts: simulatedTexts,
-        generatedText: simulatedTexts.map((t: any) => `Slide ${t.id}: ${t.text}`).join('\n\n')
-      };
+      throw error; // Remove fallback to force proper error handling
     }
   };
 
@@ -159,24 +151,9 @@ export const useTextGeneration = (onApplyTexts: (texts: GeneratedText[]) => void
         description: "Aguarde enquanto a IA processa seu pedido...",
       });
 
-      // Determinar a contagem de slides com o limite máximo aplicado
-      const slideCount = Math.min(
-        activeAgent === 'yuri' ? 6 : Math.max(3, Math.ceil(formData.content.length / 250)),
-        MAX_SLIDES_ALLOWED
-      );
+      // Sempre gerar 9 slides (máximo permitido)
+      const slideCount = MAX_SLIDES_ALLOWED;
       
-      // Configurar limites de palavras específicos para cada slide
-      const wordLimits = [...DEFAULT_WORD_LIMITS];
-      
-      // Ajustar array de limites se a contagem de slides for diferente do padrão
-      while (wordLimits.length < slideCount) {
-        wordLimits.push(30); // Limite padrão para slides adicionais
-      }
-      
-      // Verificar se estamos apenas corrigindo ortografia
-      const onlyCorrectSpelling = activeAgent === 'formatter' && formData.prompt?.toLowerCase().includes('corrigir');
-      
-      // Log para debugging
       console.log("Enviando solicitação para Edge Function:", {
         agent: activeAgent,
         prompt: formData.prompt,
@@ -184,12 +161,7 @@ export const useTextGeneration = (onApplyTexts: (texts: GeneratedText[]) => void
         audience: formData.audience,
         goal: formData.goal,
         content: formData.content,
-        slideCount: slideCount,
-        format: {
-          slideCounts: slideCount,
-          wordLimits: wordLimits.slice(0, slideCount)
-        },
-        onlyCorrectSpelling
+        slideCount: slideCount
       });
       
       // Chamar Edge Function do Supabase
@@ -200,13 +172,7 @@ export const useTextGeneration = (onApplyTexts: (texts: GeneratedText[]) => void
         audience: formData.audience,
         goal: formData.goal,
         content: formData.content,
-        slideCount: slideCount,
-        format: {
-          slideCounts: slideCount,
-          wordLimits: wordLimits.slice(0, slideCount)
-        },
-        onlyCorrectSpelling,
-        maxSlidesAllowed: MAX_SLIDES_ALLOWED
+        slideCount: slideCount
       });
 
       console.log("Resposta da Edge Function:", data);
@@ -221,42 +187,13 @@ export const useTextGeneration = (onApplyTexts: (texts: GeneratedText[]) => void
         // Limitar o número de slides ao máximo permitido
         const limitedParsedTexts = data.parsedTexts.slice(0, MAX_SLIDES_ALLOWED);
         
-        // Verificar e validar a contagem de palavras para cada slide
-        const validatedTexts = limitedParsedTexts.map((text: GeneratedText, index: number) => {
-          const targetWordCount = wordLimits[index];
-          const actualWordCount = text.text.split(/\s+/).filter((w: string) => w.length > 0).length;
-          
-          console.log(`Slide ${text.id}: ${actualWordCount} palavras (alvo: ${targetWordCount})`);
-          
-          return text;
-        });
-        
-        setParsedTexts(validatedTexts);
+        setParsedTexts(limitedParsedTexts);
         toast({
           title: "Sucesso!",
-          description: `${validatedTexts.length} slides foram gerados com sucesso.`,
+          description: `${limitedParsedTexts.length} slides foram gerados com sucesso.`,
         });
       } else {
-        console.error("Textos parseados ausentes ou inválidos:", data.parsedTexts);
-        // Como fallback, tentamos analisar o texto bruto
-        try {
-          const textosParsedManualmente = parseRawText(data.generatedText || "");
-          // Limitar ao número máximo de slides permitido
-          const limitedTexts = textosParsedManualmente.slice(0, MAX_SLIDES_ALLOWED);
-          
-          if (limitedTexts.length > 0) {
-            setParsedTexts(limitedTexts);
-            toast({
-              title: "Sucesso!",
-              description: `${limitedTexts.length} slides foram gerados com sucesso.`,
-            });
-          } else {
-            throw new Error("Não foi possível processar o texto gerado.");
-          }
-        } catch (parseError) {
-          console.error("Erro ao analisar texto manualmente:", parseError);
-          throw new Error("Não foi possível processar o texto gerado.");
-        }
+        throw new Error("Não foi possível processar o texto gerado.");
       }
 
     } catch (error: any) {

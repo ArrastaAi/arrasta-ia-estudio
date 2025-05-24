@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { parseRawText } from "@/components/carousel/ai-text-generator/textParser";
@@ -122,14 +121,7 @@ export const useFirebaseTextGeneration = (onApplyTexts: (texts: GeneratedText[])
       return data;
     } catch (error) {
       console.error('Erro ao chamar Edge Function do Supabase:', error);
-      
-      // Fallback para texto simulado baseado no agente
-      const simulatedTexts = generateFallbackTexts(requestData.agent, requestData.topic);
-      return {
-        success: true,
-        parsedTexts: simulatedTexts,
-        generatedText: simulatedTexts.map((t: any) => `Slide ${t.id}: ${t.text}`).join('\n\n')
-      };
+      throw error; // Remove fallback to force proper error handling
     }
   };
 
@@ -181,13 +173,8 @@ export const useFirebaseTextGeneration = (onApplyTexts: (texts: GeneratedText[])
         throw new Error("Por favor, informe o conteúdo a ser formatado");
       }
       
-      // Determinar a contagem de slides com o limite máximo aplicado
-      const slideCount = Math.min(
-        activeAgent === 'carousel' ? 6 : 
-        activeAgent === 'yuri' ? 6 : 
-        Math.max(3, Math.ceil(formData.content.length / 250)),
-        MAX_SLIDES_ALLOWED
-      );
+      // Sempre gerar 9 slides (máximo permitido)
+      const slideCount = MAX_SLIDES_ALLOWED;
       
       console.log("Gerando conteúdo com:", { agent: activeAgent, topic: formData.topic, slideCount });
       
@@ -223,25 +210,7 @@ export const useFirebaseTextGeneration = (onApplyTexts: (texts: GeneratedText[])
           description: `${limitedParsedTexts.length} slides foram gerados com sucesso.`,
         });
       } else {
-        // Como fallback, tentamos analisar o texto bruto
-        try {
-          const textosParsedManualmente = parseRawText(data.generatedText || "");
-          const limitedTexts = textosParsedManualmente.slice(0, MAX_SLIDES_ALLOWED);
-          
-          if (limitedTexts.length > 0) {
-            setParsedTexts(limitedTexts);
-            await saveGeneratedTextToFirestore(limitedTexts, activeAgent);
-            toast({
-              title: "Sucesso!",
-              description: `${limitedTexts.length} slides foram gerados com sucesso.`,
-            });
-          } else {
-            throw new Error("Não foi possível processar o texto gerado.");
-          }
-        } catch (parseError) {
-          console.error("Erro ao analisar texto manualmente:", parseError);
-          throw new Error("Não foi possível processar o texto gerado.");
-        }
+        throw new Error("Não foi possível processar o texto gerado.");
       }
 
     } catch (error: any) {
