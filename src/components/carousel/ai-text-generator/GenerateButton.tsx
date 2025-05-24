@@ -1,8 +1,8 @@
+
 import { Button } from "@/components/ui/button";
-import { Loader2, Sparkles, Settings } from "lucide-react";
+import { Loader2, Sparkles, AlertCircle } from "lucide-react";
 import { useAPIKeyManager } from "@/hooks/useAPIKeyManager";
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 
 interface GenerateButtonProps {
   loading: boolean;
@@ -13,7 +13,6 @@ const GenerateButton = ({ loading, onClick }: GenerateButtonProps) => {
   const { getBestAvailableKey } = useAPIKeyManager();
   const [hasApiKey, setHasApiKey] = useState<boolean>(true);
 
-  // Verificar se há uma chave de API disponível
   useEffect(() => {
     const checkApiKey = () => {
       const apiKey = getBestAvailableKey();
@@ -26,13 +25,12 @@ const GenerateButton = ({ loading, onClick }: GenerateButtonProps) => {
   if (!hasApiKey) {
     return (
       <Button 
-        asChild
-        className="bg-gradient-to-r from-amber-500 to-orange-500"
+        disabled
+        variant="outline"
+        className="bg-yellow-500/20 border-yellow-500 text-yellow-500 hover:bg-yellow-500/30"
       >
-        <Link to="/settings">
-          <Settings className="mr-2 h-4 w-4" />
-          Configurar Chave API
-        </Link>
+        <AlertCircle className="mr-2 h-4 w-4" />
+        Chave API não configurada
       </Button>
     );
   }
@@ -41,7 +39,7 @@ const GenerateButton = ({ loading, onClick }: GenerateButtonProps) => {
     <Button 
       onClick={onClick}
       disabled={loading}
-      className="bg-gradient-to-r from-purple-500 to-blue-500"
+      className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
     >
       {loading ? (
         <>
