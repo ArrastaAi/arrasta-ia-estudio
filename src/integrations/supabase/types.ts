@@ -9,86 +9,6 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      ai_configurations: {
-        Row: {
-          automation_enabled: boolean | null
-          created_at: string | null
-          gemini_api_key: string | null
-          id: string
-          n8n_webhook_url: string | null
-          unsplash_access_key: string | null
-          updated_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          automation_enabled?: boolean | null
-          created_at?: string | null
-          gemini_api_key?: string | null
-          id?: string
-          n8n_webhook_url?: string | null
-          unsplash_access_key?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          automation_enabled?: boolean | null
-          created_at?: string | null
-          gemini_api_key?: string | null
-          id?: string
-          n8n_webhook_url?: string | null
-          unsplash_access_key?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
-      ai_generations: {
-        Row: {
-          agent_type: string
-          carousel_id: string | null
-          confidence_score: number | null
-          created_at: string | null
-          generated_content: Json
-          id: string
-          performance_score: number | null
-          processing_time: number | null
-          prompt: string
-          user_id: string | null
-        }
-        Insert: {
-          agent_type: string
-          carousel_id?: string | null
-          confidence_score?: number | null
-          created_at?: string | null
-          generated_content: Json
-          id?: string
-          performance_score?: number | null
-          processing_time?: number | null
-          prompt: string
-          user_id?: string | null
-        }
-        Update: {
-          agent_type?: string
-          carousel_id?: string | null
-          confidence_score?: number | null
-          created_at?: string | null
-          generated_content?: Json
-          id?: string
-          performance_score?: number | null
-          processing_time?: number | null
-          prompt?: string
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ai_generations_carousel_id_fkey"
-            columns: ["carousel_id"]
-            isOneToOne: false
-            referencedRelation: "carousels"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       api_keys: {
         Row: {
           created_at: string | null
@@ -119,92 +39,6 @@ export type Database = {
           name?: string
           usage?: number | null
           user_id?: string | null
-        }
-        Relationships: []
-      }
-      carousel_exports: {
-        Row: {
-          carousel_id: string | null
-          created_at: string | null
-          export_url: string | null
-          format: string
-          id: string
-          platform: string | null
-          settings: Json | null
-          status: string | null
-        }
-        Insert: {
-          carousel_id?: string | null
-          created_at?: string | null
-          export_url?: string | null
-          format: string
-          id?: string
-          platform?: string | null
-          settings?: Json | null
-          status?: string | null
-        }
-        Update: {
-          carousel_id?: string | null
-          created_at?: string | null
-          export_url?: string | null
-          format?: string
-          id?: string
-          platform?: string | null
-          settings?: Json | null
-          status?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "carousel_exports_carousel_id_fkey"
-            columns: ["carousel_id"]
-            isOneToOne: false
-            referencedRelation: "carousels"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      carousel_templates: {
-        Row: {
-          category: string
-          created_at: string | null
-          created_by: string | null
-          description: string | null
-          id: string
-          is_public: boolean | null
-          name: string
-          performance_score: number | null
-          subcategory: string | null
-          template_data: Json
-          thumbnail_url: string | null
-          usage_count: number | null
-        }
-        Insert: {
-          category: string
-          created_at?: string | null
-          created_by?: string | null
-          description?: string | null
-          id?: string
-          is_public?: boolean | null
-          name: string
-          performance_score?: number | null
-          subcategory?: string | null
-          template_data: Json
-          thumbnail_url?: string | null
-          usage_count?: number | null
-        }
-        Update: {
-          category?: string
-          created_at?: string | null
-          created_by?: string | null
-          description?: string | null
-          id?: string
-          is_public?: boolean | null
-          name?: string
-          performance_score?: number | null
-          subcategory?: string | null
-          template_data?: Json
-          thumbnail_url?: string | null
-          usage_count?: number | null
         }
         Relationships: []
       }
@@ -250,45 +84,6 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id?: string
-        }
-        Relationships: []
-      }
-      design_assets: {
-        Row: {
-          category: string
-          created_at: string | null
-          id: string
-          is_premium: boolean | null
-          name: string
-          subcategory: string | null
-          tags: string[] | null
-          thumbnail_url: string | null
-          type: string
-          url: string
-        }
-        Insert: {
-          category: string
-          created_at?: string | null
-          id?: string
-          is_premium?: boolean | null
-          name: string
-          subcategory?: string | null
-          tags?: string[] | null
-          thumbnail_url?: string | null
-          type: string
-          url: string
-        }
-        Update: {
-          category?: string
-          created_at?: string | null
-          id?: string
-          is_premium?: boolean | null
-          name?: string
-          subcategory?: string | null
-          tags?: string[] | null
-          thumbnail_url?: string | null
-          type?: string
-          url?: string
         }
         Relationships: []
       }
@@ -365,45 +160,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      social_integrations: {
-        Row: {
-          access_token: string | null
-          account_id: string | null
-          account_name: string | null
-          created_at: string | null
-          expires_at: string | null
-          id: string
-          is_active: boolean | null
-          platform: string
-          refresh_token: string | null
-          user_id: string | null
-        }
-        Insert: {
-          access_token?: string | null
-          account_id?: string | null
-          account_name?: string | null
-          created_at?: string | null
-          expires_at?: string | null
-          id?: string
-          is_active?: boolean | null
-          platform: string
-          refresh_token?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          access_token?: string | null
-          account_id?: string | null
-          account_name?: string | null
-          created_at?: string | null
-          expires_at?: string | null
-          id?: string
-          is_active?: boolean | null
-          platform?: string
-          refresh_token?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
       }
       templates: {
         Row: {

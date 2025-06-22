@@ -1,7 +1,14 @@
 
 import React from 'react';
 import SimpleTextEditor from './text-editor/SimpleTextEditor';
-import type { TextStyles } from '@/types';
+
+interface TextStyles {
+  fontSize: number;
+  textColor: string;
+  fontWeight: 'normal' | 'bold';
+  textAlign: 'left' | 'center' | 'right';
+  fontFamily?: string;
+}
 
 interface TextContainerProps {
   initialText: string;
@@ -28,9 +35,7 @@ const TextContainer: React.FC<TextContainerProps> = ({
         textColor: '#FFFFFF',
         fontWeight: 'bold',
         textAlign: 'center',
-        fontFamily: 'helvetica',
-        backgroundColor: 'transparent',
-        textShadow: '0 1px 3px rgba(0,0,0,0.5)'
+        fontFamily: 'helvetica'
       };
     }
 
@@ -39,9 +44,7 @@ const TextContainer: React.FC<TextContainerProps> = ({
       textColor: styleOptions.textColor || '#FFFFFF',
       fontWeight: styleOptions.fontWeight === 'bold' ? 'bold' : 'normal',
       textAlign: styleOptions.alignment || 'center',
-      fontFamily: styleOptions.fontFamily || 'helvetica',
-      backgroundColor: styleOptions.backgroundColor || 'transparent',
-      textShadow: styleOptions.textShadow || '0 1px 3px rgba(0,0,0,0.5)'
+      fontFamily: styleOptions.fontFamily || 'helvetica'
     };
   };
 

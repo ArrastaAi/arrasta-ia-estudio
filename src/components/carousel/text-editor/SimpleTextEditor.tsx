@@ -2,7 +2,21 @@
 import React, { useState, useRef, useEffect } from 'react';
 import DraggableText from './DraggableText';
 import SimpleTextControls from './SimpleTextControls';
-import type { TextStyles, Position, TextElement } from '@/types';
+
+interface TextStyles {
+  fontSize: number;
+  textColor: string;
+  fontWeight: 'normal' | 'bold';
+  textAlign: 'left' | 'center' | 'right';
+  fontFamily?: string;
+}
+
+interface TextElement {
+  id: string;
+  text: string;
+  position: { x: number; y: number };
+  styles: TextStyles;
+}
 
 interface SimpleTextEditorProps {
   initialText?: string;
@@ -26,9 +40,7 @@ const SimpleTextEditor: React.FC<SimpleTextEditorProps> = ({
     textColor: '#FFFFFF',
     fontWeight: 'bold',
     textAlign: 'center',
-    fontFamily: 'helvetica',
-    backgroundColor: 'transparent',
-    textShadow: '0 1px 3px rgba(0,0,0,0.5)'
+    fontFamily: 'helvetica'
   });
 
   // Atualizar estilos globais quando recebidos do painel lateral
@@ -50,7 +62,7 @@ const SimpleTextEditor: React.FC<SimpleTextEditorProps> = ({
     if (initialText && textElements.length === 0) {
       const newElement: TextElement = {
         id: crypto.randomUUID(),
-        content: initialText,
+        text: initialText,
         position: { x: 10, y: 20 },
         styles: globalStyles
       };
@@ -62,7 +74,7 @@ const SimpleTextEditor: React.FC<SimpleTextEditorProps> = ({
   // Auto-save: notificar mudanças
   useEffect(() => {
     if (onTextChange) {
-      const allTexts = textElements.map(el => el.content).join('\n\n');
+      const allTexts = textElements.map(el => el.text).join('\n\n');
       onTextChange(allTexts);
     }
   }, [textElements, onTextChange]);
@@ -71,7 +83,7 @@ const SimpleTextEditor: React.FC<SimpleTextEditorProps> = ({
     console.log('[SimpleTextEditor] Adicionando novo texto com estilos:', globalStyles);
     const newElement: TextElement = {
       id: crypto.randomUUID(),
-      content: 'Novo texto',
+      text: 'Novo texto',
       position: { x: 20, y: 30 + (textElements.length * 60) },
       styles: globalStyles
     };
@@ -83,12 +95,12 @@ const SimpleTextEditor: React.FC<SimpleTextEditorProps> = ({
   const updateElementText = (id: string, newText: string) => {
     setTextElements(prev =>
       prev.map(el =>
-        el.id === id ? { ...el, content: newText } : el
+        el.id === id ? { ...el, text: newText } : el
       )
     );
   };
 
-  const updateElementPosition = (id: string, newPosition: Position) => {
+  const updateElementPosition = (id: string, newPosition: { x: number; y: number }) => {
     setTextElements(prev =>
       prev.map(el =>
         el.id === id ? { ...el, position: newPosition } : el
@@ -192,7 +204,7 @@ const SimpleTextEditor: React.FC<SimpleTextEditorProps> = ({
           <DraggableText
             key={element.id}
             id={element.id}
-            text={element.content}
+            text={element.text}
             position={element.position}
             styles={element.styles}
             isSelected={selectedElementId === element.id}
