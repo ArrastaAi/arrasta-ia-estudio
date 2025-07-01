@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Wand2, AlertCircle } from 'lucide-react';
+import { Loader2, Wand2, AlertCircle, Check, Edit3 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -28,6 +28,8 @@ const N8nContentGenerator: React.FC<N8nContentGeneratorProps> = ({
   const { toast } = useToast();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [generatedTexts, setGeneratedTexts] = useState<GeneratedText[]>([]);
+  const [isEditing, setIsEditing] = useState(false);
   
   const [formData, setFormData] = useState({
     topic: '',
@@ -47,6 +49,12 @@ const N8nContentGenerator: React.FC<N8nContentGeneratorProps> = ({
 
   const handleInputChange = (field: string, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleTextChange = (id: number, newText: string) => {
+    setGeneratedTexts(prev => 
+      prev.map(text => text.id === id ? { ...text, text: newText } : text)
+    );
   };
 
   const handleGenerate = async () => {
@@ -101,12 +109,13 @@ const N8nContentGenerator: React.FC<N8nContentGeneratorProps> = ({
       console.log('Dados recebidos:', data);
 
       if (data.success && data.parsedTexts && Array.isArray(data.parsedTexts)) {
-        console.log(`Aplicando ${data.parsedTexts.length} slides gerados`);
-        onApplyTexts(data.parsedTexts);
+        console.log(`${data.parsedTexts.length} slides gerados`);
+        setGeneratedTexts(data.parsedTexts);
+        setIsEditing(false);
         
         toast({
           title: "Conteúdo gerado com sucesso!",
-          description: `${data.parsedTexts.length} slides foram gerados e aplicados.`
+          description: `${data.parsedTexts.length} slides foram gerados. Revise e edite se necessário.`
         });
       } else {
         console.error('Dados inválidos recebidos:', data);
@@ -134,6 +143,17 @@ const N8nContentGenerator: React.FC<N8nContentGeneratorProps> = ({
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleApplyContent = () => {
+    if (generatedTexts.length === 0) return;
+    
+    onApplyTexts(generatedTexts);
+    
+    toast({
+      title: "Conteúdo aplicado!",
+      description: `${generatedTexts.length} slides foram aplicados ao carrossel. Acesse a aba Designer para continuar editando.`
+    });
   };
 
   return (
@@ -247,6 +267,65 @@ const N8nContentGenerator: React.FC<N8nContentGeneratorProps> = ({
           </Button>
         </CardContent>
       </Card>
+
+      {generatedTexts.length > 0 && (
+        <Card className="bg-gray-800 border-gray-700">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-white flex items-center gap-2">
+                <Edit3 className="h-5 w-5" />
+                Conteúdo Gerado ({generatedTexts.length} slides)
+              </CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsEditing(!isEditing)}
+                className="border-gray-600 text-gray-300 hover:bg-gray-700"
+              >
+                {isEditing ? 'Visualizar' : 'Editar'}
+              </Button>
+            </div>
+            <CardDescription className="text-gray-400">
+              Revise e edite o conteúdo antes de aplicar ao carrossel
+            </CardDescription>
+          </CardHeader>
+          
+          <CardContent className="space-y-4">
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {generatedTexts.map((text) => (
+                <div key={text.id} className="p-4 bg-gray-700 rounded-lg border-l-4 border-purple-500">
+                  <div className="flex justify-between items-start mb-2">
+                    <Label className="text-purple-400 font-medium text-sm">
+                      Slide {text.id}
+                    </Label>
+                  </div>
+                  
+                  {isEditing ? (
+                    <Textarea
+                      value={text.text}
+                      onChange={(e) => handleTextChange(text.id, e.target.value)}
+                      className="bg-gray-600 border-gray-500 text-white min-h-[80px] resize-none"
+                      rows={3}
+                    />
+                  ) : (
+                    <p className="text-white text-sm leading-relaxed">
+                      {text.text}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+            
+            <Button 
+              onClick={handleApplyContent}
+              className="w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:opacity-90 font-medium"
+            >
+              <Check className="mr-2 h-4 w-4" />
+              Aplicar Conteúdo ao Carrossel
+            </Button>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };
