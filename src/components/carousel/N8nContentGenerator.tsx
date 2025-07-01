@@ -38,6 +38,7 @@ const N8nContentGenerator: React.FC<N8nContentGeneratorProps> = ({
   });
 
   const intentions = [
+    { value: 'educar', label: 'Educar' },
     { value: 'vender', label: 'Vender' },
     { value: 'engajar', label: 'Engajar' },
     { value: 'gerar-consciencia', label: 'Gerar Consciência' },
@@ -68,8 +69,10 @@ const N8nContentGenerator: React.FC<N8nContentGeneratorProps> = ({
     }
 
     setLoading(true);
+    
     try {
-      console.log('Enviando dados para N8N:', formData);
+      console.log('Iniciando geração de conteúdo...');
+      console.log('Dados do formulário:', formData);
 
       const response = await fetch('https://kjoevpxfgujzaekqfzyn.supabase.co/functions/v1/generate-ai-content', {
         method: 'POST',
@@ -86,13 +89,19 @@ const N8nContentGenerator: React.FC<N8nContentGeneratorProps> = ({
         })
       });
 
+      console.log('Resposta da Edge Function - Status:', response.status);
+
       if (!response.ok) {
-        throw new Error(`Erro na geração: ${response.status}`);
+        const errorText = await response.text();
+        console.error('Erro da Edge Function:', errorText);
+        throw new Error(`Erro na geração: ${response.status} - ${errorText}`);
       }
 
       const data = await response.json();
+      console.log('Dados recebidos:', data);
 
       if (data.success && data.parsedTexts && Array.isArray(data.parsedTexts)) {
+        console.log(`Aplicando ${data.parsedTexts.length} slides gerados`);
         onApplyTexts(data.parsedTexts);
         
         toast({
@@ -100,14 +109,26 @@ const N8nContentGenerator: React.FC<N8nContentGeneratorProps> = ({
           description: `${data.parsedTexts.length} slides foram gerados e aplicados.`
         });
       } else {
-        throw new Error(data.error || "Erro ao processar resposta do N8N");
+        console.error('Dados inválidos recebidos:', data);
+        throw new Error(data.error || "Erro ao processar resposta da geração");
       }
 
     } catch (error: any) {
-      console.error('Erro ao gerar conteúdo:', error);
+      console.error('Erro completo ao gerar conteúdo:', error);
+      
+      let errorMessage = "Houve um problema na geração. Tente novamente.";
+      
+      if (error.message.includes('404')) {
+        errorMessage = "Serviço N8N indisponível. Verifique a configuração do webhook.";
+      } else if (error.message.includes('500')) {
+        errorMessage = "Erro interno do servidor. Tente novamente em alguns minutos.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Erro ao gerar conteúdo",
-        description: error.message || "Houve um problema na geração. Tente novamente.",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -210,7 +231,7 @@ const N8nContentGenerator: React.FC<N8nContentGeneratorProps> = ({
           <Button 
             onClick={handleGenerate}
             disabled={loading || !formData.topic.trim()}
-            className="w-full bg-purple-600 hover:bg-purple-700"
+            className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50"
           >
             {loading ? (
               <>
