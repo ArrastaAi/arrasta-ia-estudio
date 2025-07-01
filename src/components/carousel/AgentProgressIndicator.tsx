@@ -56,6 +56,9 @@ const AgentProgressIndicator: React.FC<AgentProgressProps> = ({
     const currentIndex = stages.indexOf(progress.stage);
     const agentIndex = stages.indexOf(agentType);
     
+    // Se progress é 100%, todos os agentes estão completos
+    if (progress.progress === 100) return 'completed';
+    
     return agentIndex < currentIndex ? 'completed' : 'pending';
   };
 
@@ -79,33 +82,39 @@ const AgentProgressIndicator: React.FC<AgentProgressProps> = ({
         )}
 
         <div className="grid grid-cols-2 gap-3">
-          {Object.entries(agentConfig).map(([key, config]) => {
+          {Object.entries(agentConfig).map(([key, config], index) => {
             const status = getAgentStatus(key);
             const IconComponent = config.icon;
             
             return (
               <div 
                 key={key}
-                className={`p-3 rounded-lg border-2 transition-all duration-300 ${
+                className={`p-3 rounded-lg border-2 transition-all duration-500 animate-fade-in ${
                   status === 'active' 
-                    ? 'border-blue-500 bg-blue-500/10' 
+                    ? 'border-blue-500 bg-blue-500/10 scale-105' 
                     : status === 'completed'
                     ? 'border-green-500 bg-green-500/10'
                     : 'border-gray-600 bg-gray-700/50'
                 }`}
+                style={{ 
+                  animationDelay: `${index * 150}ms`,
+                  animationFillMode: 'both'
+                }}
               >
                 <div className="flex items-center gap-2">
-                  <div className={`p-2 rounded-full ${config.color}/20`}>
+                  <div className={`p-2 rounded-full transition-all duration-300 ${config.color}/20 ${
+                    status === 'active' ? 'scale-110' : ''
+                  }`}>
                     {status === 'active' ? (
                       <Loader2 className="h-4 w-4 text-blue-400 animate-spin" />
                     ) : status === 'completed' ? (
-                      <Check className="h-4 w-4 text-green-400" />
+                      <Check className="h-4 w-4 text-green-400 animate-scale-in" />
                     ) : (
                       <IconComponent className="h-4 w-4 text-gray-400" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-medium ${
+                    <p className={`text-sm font-medium transition-colors duration-300 ${
                       status === 'active' ? 'text-blue-300' 
                       : status === 'completed' ? 'text-green-300'
                       : 'text-gray-400'
