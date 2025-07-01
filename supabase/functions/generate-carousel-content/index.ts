@@ -134,8 +134,10 @@ ${content ? `CONTEÚDO PARA REFINAR:\n${content}` : 'CRIAR CONTEÚDO NOVO'}
 
 Retorne APENAS um JSON válido seguindo a estrutura especificada. Não adicione texto antes ou depois do JSON.`;
 
+  console.log(`🤖 Chamando agente ${agentType} com API key: ${apiKey ? 'configurada' : 'ausente'}`);
+
   try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`, {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -154,11 +156,16 @@ Retorne APENAS um JSON válido seguindo a estrutura especificada. Não adicione 
       })
     });
 
+    console.log(`📡 Status da resposta: ${response.status}`);
+    
     if (!response.ok) {
-      throw new Error(`Erro na API Gemini: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`❌ Erro detalhado da API: ${errorText}`);
+      throw new Error(`Erro na API Gemini: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
+    console.log(`📄 Estrutura da resposta:`, JSON.stringify(data, null, 2));
     const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text;
     
     if (!generatedText) {
@@ -173,7 +180,12 @@ Retorne APENAS um JSON válido seguindo a estrutura especificada. Não adicione 
 
     return JSON.parse(jsonMatch[0]);
   } catch (error) {
-    console.error(`Erro no agente ${agentType}:`, error);
+    console.error(`❌ Erro no agente ${agentType}:`, error);
+    console.error(`🔧 Detalhes técnicos:`, {
+      agentType,
+      hasApiKey: !!apiKey,
+      requestSize: userPrompt.length
+    });
     throw error;
   }
 }
