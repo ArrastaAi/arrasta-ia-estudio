@@ -38,20 +38,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSession(session);
         setUser(session?.user ?? null);
         
-        // Create profile if user signs up
-        if (event === 'SIGNED_UP' && session?.user) {
+        // Create profile if user signs up - using correct event type
+        if (event === 'SIGNED_IN' && session?.user && session.user.email_confirmed_at) {
+          // Check if this is a new user by trying to get their profile
           setTimeout(async () => {
             try {
-              const { error } = await supabase
+              const { data: existingProfile } = await supabase
                 .from('profiles')
-                .insert({
-                  id: session.user.id,
-                  username: session.user.user_metadata?.username || null,
-                  avatar_url: session.user.user_metadata?.picture || null,
-                });
+                .select('id')
+                .eq('id', session.user.id)
+                .single();
               
-              if (error && error.code !== '23505') { // Ignore duplicate key errors
-                console.error('[Auth] Erro ao criar perfil:', error);
+              // If no profile exists, create one
+              if (!existingProfile) {
+                const { error } = await supabase
+                  .from('profiles')
+                  .insert({
+                    id: session.user.id,
+                    username: session.user.user_metadata?.username || null,
+                    avatar_url: session.user.user_metadata?.picture || null,
+                  });
+                
+                if (error && error.code !== '23505') { // Ignore duplicate key errors
+                  console.error('[Auth] Erro ao criar perfil:', error);
+                }
               }
             } catch (error) {
               console.error('[Auth] Erro ao criar perfil:', error);
