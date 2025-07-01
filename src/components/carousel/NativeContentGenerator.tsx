@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Wand2, Check, Edit3, Users, Target, BookOpen, Settings } from 'lucide-react';
+import { Loader2, Wand2, Users, Target, BookOpen, Settings } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStreamingGeneration } from '@/hooks/useStreamingGeneration';
@@ -34,8 +34,6 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
 }) => {
   const { toast } = useToast();
   const { user } = useAuth();
-  const [generatedSlides, setGeneratedSlides] = useState<SlideContent[]>([]);
-  const [isEditing, setIsEditing] = useState(false);
   const { 
     isStreaming, 
     progress, 
@@ -66,21 +64,6 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSlideChange = (index: number, field: keyof SlideContent, value: string | string[]) => {
-    setGeneratedSlides(prev => 
-      prev.map((slide, i) => 
-        i === index ? { ...slide, [field]: value } : slide
-      )
-    );
-  };
-
-  const convertSlidesToTexts = (slides: SlideContent[]): GeneratedText[] => {
-    return slides.map((slide, index) => ({
-      id: index + 1,
-      text: slide.title + '\n\n' + slide.subtitle + '\n\n' + slide.body.join('\n')
-    }));
-  };
-
   const handleGenerate = async () => {
     if (!user) {
       toast({
@@ -101,7 +84,6 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
     }
 
     reset();
-    setGeneratedSlides([]);
     
     await startStreaming({
       topic: formData.topic,
@@ -109,19 +91,6 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
       intention: formData.intention,
       slideCount: formData.slideCount,
       context: formData.context
-    });
-  };
-
-  const handleApplyContent = () => {
-    const slidesToApply = slides.length > 0 ? slides : generatedSlides;
-    if (slidesToApply.length === 0) return;
-    
-    const texts = convertSlidesToTexts(slidesToApply);
-    onApplyTexts(texts);
-    
-    toast({
-      title: "Conteúdo aplicado!",
-      description: slidesToApply.length + " slides foram aplicados ao carrossel."
     });
   };
 
@@ -249,96 +218,7 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
         isStreaming={isStreaming}
       />
 
-      {(slides.length > 0 || generatedSlides.length > 0) && (
-        <Card className="bg-gray-800 border-gray-700">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-white flex items-center gap-2">
-                <Edit3 className="h-5 w-5" />
-                Conteúdo Gerado ({(slides.length > 0 ? slides : generatedSlides).length} slides)
-                {selectedIntention && (
-                  <Badge variant="secondary" className={`ml-2 ${selectedIntention.color} text-white`}>
-                    {selectedIntention.label}
-                  </Badge>
-                )}
-              </CardTitle>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsEditing(!isEditing)}
-                className="border-gray-600 text-gray-300 hover:bg-gray-700"
-              >
-                {isEditing ? 'Visualizar' : 'Editar'}
-              </Button>
-            </div>
-            <CardDescription className="text-gray-400">
-              Conteúdo refinado pelos agentes especializados
-            </CardDescription>
-          </CardHeader>
-          
-          <CardContent className="space-y-4">
-            <div className="space-y-3 max-h-96 overflow-y-auto">
-              {(slides.length > 0 ? slides : generatedSlides).map((slide, index) => (
-                <div key={index} className="p-4 bg-gray-700 rounded-lg border-l-4 border-purple-500">
-                  <div className="flex justify-between items-start mb-2">
-                    <Label className="text-purple-400 font-medium text-sm">
-                      Slide {index + 1}
-                    </Label>
-                  </div>
-                  
-                  {isEditing ? (
-                    <div className="space-y-2">
-                      <Input
-                        value={slide.title}
-                        onChange={(e) => handleSlideChange(index, 'title', e.target.value)}
-                        placeholder="Título"
-                        className="bg-gray-600 border-gray-500 text-white font-bold"
-                      />
-                      <Input
-                        value={slide.subtitle}
-                        onChange={(e) => handleSlideChange(index, 'subtitle', e.target.value)}
-                        placeholder="Subtítulo"
-                        className="bg-gray-600 border-gray-500 text-white"
-                      />
-                      <Textarea
-                        value={slide.body.join('\n')}
-                        onChange={(e) => handleSlideChange(index, 'body', e.target.value.split('\n'))}
-                        placeholder="Corpo do texto (uma linha por item)"
-                        className="bg-gray-600 border-gray-500 text-white min-h-[80px]"
-                        rows={3}
-                      />
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <h3 className="text-white font-bold text-sm">
-                        {slide.title}
-                      </h3>
-                      <p className="text-gray-300 text-sm">
-                        {slide.subtitle}
-                      </p>
-                      <div className="space-y-1">
-                        {slide.body.map((line, lineIndex) => (
-                          <p key={lineIndex} className="text-white text-sm leading-relaxed">
-                            {line}
-                          </p>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-            
-            <Button 
-              onClick={handleApplyContent}
-              className="w-full bg-gradient-to-r from-green-500 to-blue-500 hover:opacity-90 font-medium"
-            >
-              <Check className="mr-2 h-4 w-4" />
-              Aplicar Conteúdo ao Carrossel
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+      {/* Conteúdo será mostrado no ContentTab após geração */}
     </div>
   );
 };
