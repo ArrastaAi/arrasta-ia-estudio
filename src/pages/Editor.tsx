@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -38,7 +37,7 @@ const Editor = () => {
   const [activeTab, setActiveTab] = useState("content");
 
   const MIN_SLIDES = 4;
-  const MAX_SLIDES = 9;
+  const MAX_SLIDES = 12; // Atualizado para 12
 
   const [textStyles, setTextStyles] = useState<TextStyleOptions>({
     textSize: "medium",
@@ -210,8 +209,9 @@ const Editor = () => {
       const updatedSlides = [...carouselData.slides];
       
       const targetSlideCount = Math.max(texts.length, MIN_SLIDES);
+      const limitedSlideCount = Math.min(targetSlideCount, MAX_SLIDES);
       
-      while (updatedSlides.length < targetSlideCount) {
+      while (updatedSlides.length < limitedSlideCount) {
         const newSlide: Omit<Slide, 'id'> = {
           carousel_id: carouselData.id,
           order_index: updatedSlides.length,
@@ -240,7 +240,7 @@ const Editor = () => {
         updatedSlides.push(slideWithCorrectTypes);
       }
 
-      for (let i = 0; i < texts.length; i++) {
+      for (let i = 0; i < Math.min(texts.length, MAX_SLIDES); i++) {
         if (updatedSlides[i]) {
           updatedSlides[i].content = texts[i].text;
           
@@ -261,7 +261,7 @@ const Editor = () => {
 
       toast({
         title: "Textos aplicados",
-        description: `${texts.length} textos foram aplicados aos slides.`
+        description: `${Math.min(texts.length, MAX_SLIDES)} textos foram aplicados aos slides.`
       });
     } catch (error) {
       console.error("Erro ao aplicar textos:", error);

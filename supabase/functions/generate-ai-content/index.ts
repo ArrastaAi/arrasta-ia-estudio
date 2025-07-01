@@ -21,23 +21,27 @@ serve(async (req) => {
     const requestData = await req.json();
     console.log('Solicitação N8N recebida:', requestData);
 
-    // Pegar URL do webhook N8N das variáveis de ambiente
-    const n8nWebhookUrl = Deno.env.get('N8N_WEBHOOK_URL');
+    // Usar a URL do webhook N8N configurada
+    const n8nWebhookUrl = 'https://n8n-n8n-start.0v0jjw.easypanel.host/webhook-test/thread';
     
     if (!n8nWebhookUrl) {
       throw new Error('URL do webhook N8N não configurada no servidor');
     }
 
-    // Chamar N8N webhook
+    // Chamar N8N webhook com dados estruturados
     const response = await fetch(n8nWebhookUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        ...requestData,
+        topic: requestData.topic || '',
+        audience: requestData.audience || 'Público geral',
+        intention: requestData.intention || 'educar',
+        slideCount: Math.min(requestData.slideCount || 5, 12), // Máximo 12 slides
+        context: requestData.context || '',
         timestamp: new Date().toISOString(),
-        source: 'supabase-edge-function'
+        source: 'carousel-generator'
       }),
     });
 
@@ -52,26 +56,26 @@ serve(async (req) => {
     let parsedTexts: GeneratedText[] = [];
     
     if (n8nResult.slides && Array.isArray(n8nResult.slides)) {
-      parsedTexts = n8nResult.slides.map((text: string, index: number) => ({
+      parsedTexts = n8nResult.slides.slice(0, 12).map((text: string, index: number) => ({
         id: index + 1,
         text: text.trim()
       }));
     } else if (n8nResult.content) {
       // Fallback: dividir conteúdo em slides
       const lines = n8nResult.content.split('\n').filter((line: string) => line.trim());
-      parsedTexts = lines.slice(0, 9).map((text: string, index: number) => ({
+      parsedTexts = lines.slice(0, 12).map((text: string, index: number) => ({
         id: index + 1,
         text: text.trim()
       }));
     }
 
-    // Garantir pelo menos alguns slides
+    // Garantir pelo menos alguns slides se N8N não retornar nada
     if (parsedTexts.length === 0) {
-      parsedTexts = [
-        { id: 1, text: "Slide 1: Introdução ao tema" },
-        { id: 2, text: "Slide 2: Desenvolvimento" },
-        { id: 3, text: "Slide 3: Conclusão" }
-      ];
+      const slideCount = Math.min(requestData.slideCount || 5, 12);
+      parsedTexts = Array.from({ length: slideCount }, (_, i) => ({
+        id: i + 1,
+        text: `Slide ${i + 1}: Conteúdo sobre ${requestData.topic || 'o tema solicitado'}`
+      }));
     }
 
     console.log(`Processamento concluído: ${parsedTexts.length} slides gerados`);

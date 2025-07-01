@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Info } from "lucide-react";
-import AITextGenerator from "./AITextGenerator";
+import N8nContentGenerator from "./N8nContentGenerator";
 import { useToast } from '@/hooks/use-toast';
 
 interface ContentTabProps {
@@ -25,7 +25,7 @@ const ContentTab: React.FC<ContentTabProps> = ({
   const { toast } = useToast();
   
   const MIN_SLIDES = 4;
-  const MAX_SLIDES = 9;
+  const MAX_SLIDES = 12; // Atualizado para 12
   
   const handleApplyTexts = (texts: { id: number; text: string }[]) => {
     if (texts.length < MIN_SLIDES) {
@@ -68,10 +68,9 @@ const ContentTab: React.FC<ContentTabProps> = ({
         </AlertDescription>
       </Alert>
       
-      <AITextGenerator 
+      <N8nContentGenerator 
         carouselId={carouselId} 
         onApplyTexts={handleApplyTexts}
-        slideCount={slides.length || MIN_SLIDES}
       />
       
       {showManualEditor && (
