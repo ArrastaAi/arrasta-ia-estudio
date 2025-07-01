@@ -1,6 +1,6 @@
+
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -10,8 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Search } from "lucide-react";
-import { db } from "@/integrations/firebase/client";
-import { collection, getDocs } from "firebase/firestore";
+import { supabase } from "@/integrations/supabase/client";
 import { Template } from "@/types/database.types";
 import { useToast } from "@/hooks/use-toast";
 
@@ -30,21 +29,14 @@ const TemplateGallery = ({ onSelectTemplate }: TemplateGalleryProps) => {
     const fetchTemplates = async () => {
       try {
         setLoading(true);
-        const templatesCollection = collection(db, "templates");
-        const templatesSnapshot = await getDocs(templatesCollection);
+        const { data, error } = await supabase
+          .from('templates')
+          .select('*')
+          .order('created_at', { ascending: false });
 
-        const templatesList: Template[] = templatesSnapshot.docs.map(doc => ({
-          id: doc.id,
-          title: doc.data().title,
-          category: doc.data().category,
-          subcategory: doc.data().subcategory || null,
-          layout_type: doc.data().layout_type,
-          thumbnail_url: doc.data().thumbnail_url || null,
-          is_premium: doc.data().is_premium,
-          created_at: doc.data().created_at,
-        } as Template));
+        if (error) throw error;
 
-        setTemplates(templatesList);
+        setTemplates(data || []);
       } catch (error: any) {
         toast({
           title: "Erro ao carregar templates",
@@ -63,7 +55,7 @@ const TemplateGallery = ({ onSelectTemplate }: TemplateGalleryProps) => {
     const matchesCategory = category === "all" || template.category === category;
     const matchesSearch =
       searchQuery === "" ||
-      template.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       template.subcategory?.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
@@ -119,18 +111,18 @@ const TemplateGallery = ({ onSelectTemplate }: TemplateGalleryProps) => {
                   {template.thumbnail_url ? (
                     <img
                       src={template.thumbnail_url}
-                      alt={template.title}
+                      alt={template.name}
                       className="w-full h-full object-cover"
                     />
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center text-gray-500 text-center p-4">
-                      {template.title}
+                      {template.name}
                     </div>
                   )}
                 </div>
                 <div className="p-3">
                   <h3 className="text-white text-sm font-medium truncate">
-                    {template.title}
+                    {template.name}
                   </h3>
                   <p className="text-gray-400 text-xs">
                     {template.subcategory || template.category}

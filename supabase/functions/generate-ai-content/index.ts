@@ -1,8 +1,5 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { getAPIKeyForAgent } from './api-keys.ts';
-import { tryGenerateWithKey } from './gemini-client.ts';
-import { parseResponseToSlidesAdvanced } from './response-parser.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -22,108 +19,76 @@ serve(async (req) => {
 
   try {
     const requestData = await req.json();
-    const { agent } = requestData;
+    console.log('Solicitação N8N recebida:', requestData);
+
+    // Pegar URL do webhook N8N das variáveis de ambiente
+    const n8nWebhookUrl = Deno.env.get('N8N_WEBHOOK_URL');
     
-    console.log(`[${agent?.toUpperCase() || 'UNKNOWN'}] Solicitação recebida para geração especializada:`, { 
-      agent,
-      topicLength: requestData.topic?.length || 0,
-      contentLength: requestData.content?.length || 0,
-      hasAudience: !!requestData.audience,
-      goal: requestData.goal
+    if (!n8nWebhookUrl) {
+      throw new Error('URL do webhook N8N não configurada no servidor');
+    }
+
+    // Chamar N8N webhook
+    const response = await fetch(n8nWebhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        ...requestData,
+        timestamp: new Date().toISOString(),
+        source: 'supabase-edge-function'
+      }),
     });
 
-    // Obter chaves API para o agente
-    const apiKeys = getAPIKeyForAgent(agent);
+    if (!response.ok) {
+      throw new Error(`Erro ao chamar N8N: ${response.status}`);
+    }
+
+    const n8nResult = await response.json();
+    console.log('Resposta do N8N:', n8nResult);
+
+    // Processar resposta do N8N para formato esperado
+    let parsedTexts: GeneratedText[] = [];
     
-    if (apiKeys.length === 0) {
-      throw new Error(`Nenhuma chave API configurada para o agente: ${agent}`);
+    if (n8nResult.slides && Array.isArray(n8nResult.slides)) {
+      parsedTexts = n8nResult.slides.map((text: string, index: number) => ({
+        id: index + 1,
+        text: text.trim()
+      }));
+    } else if (n8nResult.content) {
+      // Fallback: dividir conteúdo em slides
+      const lines = n8nResult.content.split('\n').filter((line: string) => line.trim());
+      parsedTexts = lines.slice(0, 9).map((text: string, index: number) => ({
+        id: index + 1,
+        text: text.trim()
+      }));
     }
 
-    console.log(`[${agent.toUpperCase()}] Tentando ${apiKeys.length} chaves API especializadas`);
-
-    let lastError: Error | null = null;
-    let data: any = null;
-
-    // Tentar cada chave sequencialmente
-    for (let i = 0; i < apiKeys.length; i++) {
-      const apiKey = apiKeys[i];
-      try {
-        console.log(`[${agent.toUpperCase()}] Tentativa ${i + 1}/${apiKeys.length} com prompt especializado`);
-        data = await tryGenerateWithKey(apiKey, requestData, agent);
-        console.log(`[${agent.toUpperCase()}] Sucesso com chave ${i + 1} - prompt especializado aplicado`);
-        break;
-      } catch (error: any) {
-        console.log(`[${agent.toUpperCase()}] Falhou com chave ${i + 1}:`, error.message);
-        lastError = error;
-        continue;
-      }
+    // Garantir pelo menos alguns slides
+    if (parsedTexts.length === 0) {
+      parsedTexts = [
+        { id: 1, text: "Slide 1: Introdução ao tema" },
+        { id: 2, text: "Slide 2: Desenvolvimento" },
+        { id: 3, text: "Slide 3: Conclusão" }
+      ];
     }
 
-    if (!data) {
-      throw new Error(`Todas as chaves falharam para agente ${agent}: ${lastError?.message}`);
-    }
-
-    // Extract generated text
-    let generatedText = "";
-    if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
-      generatedText = data.candidates[0].content.parts[0].text;
-    } else {
-      console.error(`[${agent.toUpperCase()}] Estrutura de resposta inválida:`, JSON.stringify(data));
-      throw new Error("Resposta inválida da API Gemini");
-    }
-
-    console.log(`[${agent.toUpperCase()}] Texto especializado gerado:`, generatedText.substring(0, 150) + "...");
-
-    // Parse the generated text into exactly 9 slides with improved parsing
-    const targetSlideCount = 9;
-    const parsedTexts = parseResponseToSlidesAdvanced(generatedText, targetSlideCount, agent);
-
-    if (parsedTexts.length < targetSlideCount) {
-      console.log(`[${agent.toUpperCase()}] Aviso: Apenas ${parsedTexts.length} slides parseados, completando até ${targetSlideCount}`);
-      // Fill missing slides with meaningful content based on agent type
-      while (parsedTexts.length < targetSlideCount) {
-        const slideNumber = parsedTexts.length + 1;
-        let defaultContent = "";
-        
-        if (agent === "carousel") {
-          defaultContent = `Continue explorando este tema fascinante que pode transformar seus resultados de forma definitiva.`;
-        } else if (agent === "yuri") {
-          defaultContent = `Slide ${slideNumber}: Aplicação prática dessas estratégias em sua realidade.`;
-        } else if (agent === "formatter") {
-          defaultContent = `Aplique essas ideias hoje mesmo.`;
-        }
-        
-        parsedTexts.push({
-          id: slideNumber,
-          text: defaultContent
-        });
-      }
-    }
-
-    // Ensure we have exactly 9 slides
-    const finalTexts = parsedTexts.slice(0, targetSlideCount);
-
-    console.log(`[${agent.toUpperCase()}] Geração especializada concluída: ${finalTexts.length} slides de alta qualidade`);
+    console.log(`Processamento concluído: ${parsedTexts.length} slides gerados`);
 
     return new Response(
       JSON.stringify({
         success: true,
-        generatedText,
-        parsedTexts: finalTexts,
-        agent: agent,
-        slidesGenerated: finalTexts.length,
-        qualityMetrics: {
-          agentSpecialized: true,
-          promptType: agent,
-          slidesTargeted: targetSlideCount,
-          slidesDelivered: finalTexts.length
-        }
+        generatedText: n8nResult.content || 'Conteúdo gerado via N8N',
+        parsedTexts: parsedTexts,
+        source: 'n8n-webhook',
+        slidesGenerated: parsedTexts.length
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error: any) {
-    console.error('Erro na função generate-ai-content especializada:', error);
+    console.error('Erro na função generate-ai-content:', error);
     return new Response(
       JSON.stringify({
         success: false,
