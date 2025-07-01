@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Info } from "lucide-react";
 import FirebaseAITextGenerator from "@/components/carousel/FirebaseAITextGenerator";
-import UserCarouselsPreview from "@/components/carousel/UserCarouselsPreview";
 import { useToast } from '@/hooks/use-toast';
 
 interface ContentTabProps {
@@ -29,9 +28,7 @@ const ContentTab: React.FC<ContentTabProps> = ({
   const MAX_SLIDES = 9;
   
   const handleApplyCreativeTexts = (texts: { id: number; text: string }[]) => {
-    // Verificar se temos o mínimo de slides necessário
     if (texts.length < MIN_SLIDES) {
-      // Completar com slides vazios até o mínimo
       const completeTexts = [...texts];
       for (let i = texts.length; i < MIN_SLIDES; i++) {
         completeTexts.push({
@@ -48,7 +45,6 @@ const ContentTab: React.FC<ContentTabProps> = ({
       
       onApplyGeneratedTexts(completeTexts);
     } else if (texts.length > MAX_SLIDES) {
-      // Limitar ao máximo permitido
       const limitedTexts = texts.slice(0, MAX_SLIDES);
       
       toast({
@@ -74,8 +70,6 @@ const ContentTab: React.FC<ContentTabProps> = ({
           Os agentes de IA irão adaptar automaticamente o conteúdo para a quantidade de slides configurada.
         </AlertDescription>
       </Alert>
-
-      <UserCarouselsPreview />
       
       <FirebaseAITextGenerator 
         carouselId={carouselId} 
