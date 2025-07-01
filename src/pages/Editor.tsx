@@ -14,7 +14,6 @@ import ContentTab from "@/components/carousel/ContentTab";
 import DesignTab from "@/components/carousel/DesignTab";
 import ExportTab from "@/components/carousel/ExportTab";
 import { TextStyleOptions } from "@/types/carousel.types";
-import { useStreamingGeneration } from "@/hooks/useStreamingGeneration";
 
 interface CarouselData {
   id: string;
@@ -35,9 +34,6 @@ const Editor = () => {
   const [saving, setSaving] = useState(false);
   const [carouselData, setCarouselData] = useState<CarouselData | null>(null);
   const [activeTab, setActiveTab] = useState("content");
-  
-  // Hook de streaming para comunicação com o ContentTab
-  const streamingState = useStreamingGeneration();
 
   const MIN_SLIDES = 4;
   const MAX_SLIDES = 12;
@@ -460,12 +456,7 @@ const Editor = () => {
                     carouselId={carouselData?.id || ""} 
                     slides={carouselData?.slides || []} 
                     onApplyGeneratedTexts={handleApplyGeneratedTexts} 
-                    onUpdateSlideContent={handleUpdateSlideContent}
-                    streamingState={{
-                      isStreaming: streamingState.isStreaming,
-                      slides: streamingState.slides,
-                      progress: streamingState.progress
-                    }}
+                    onUpdateSlideContent={handleUpdateSlideContent} 
                   />
                 </TabsContent>
                 <TabsContent value="design" className="mt-0">

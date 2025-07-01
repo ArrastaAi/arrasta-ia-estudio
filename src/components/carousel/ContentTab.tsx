@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Info } from "lucide-react";
 import NativeContentGenerator from "./NativeContentGenerator";
-import StreamingSlideEditor from "./StreamingSlideEditor";
 import { useToast } from '@/hooks/use-toast';
 
 interface ContentTabProps {
@@ -14,24 +13,15 @@ interface ContentTabProps {
   slides: Slide[];
   onApplyGeneratedTexts: (texts: { id: number; text: string }[]) => void;
   onUpdateSlideContent: (index: number, content: string) => void;
-  streamingState?: {
-    isStreaming: boolean;
-    slides: any[];
-    progress: any;
-  };
 }
 
 const ContentTab: React.FC<ContentTabProps> = ({ 
   carouselId, 
   slides, 
   onApplyGeneratedTexts, 
-  onUpdateSlideContent,
-  streamingState 
+  onUpdateSlideContent 
 }) => {
   const [showManualEditor, setShowManualEditor] = useState(false);
-  
-  // Mostrar editor manual quando streaming começar ou já estiver ativo
-  const shouldShowEditor = showManualEditor || streamingState?.isStreaming || (streamingState?.slides && streamingState.slides.length > 0);
   const { toast } = useToast();
   
   const MIN_SLIDES = 4;
@@ -77,16 +67,45 @@ const ContentTab: React.FC<ContentTabProps> = ({
         onApplyTexts={handleApplyTexts}
       />
       
-      {shouldShowEditor && (
-        <StreamingSlideEditor
-          slides={slides}
-          streamingSlides={streamingState?.slides || []}
-          isStreaming={streamingState?.isStreaming || false}
-          progress={streamingState?.progress}
-          targetSlideCount={MAX_SLIDES}
-          onUpdateSlideContent={onUpdateSlideContent}
-          onApplyGeneratedContent={onApplyGeneratedTexts}
-        />
+      {showManualEditor && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-medium text-white">
+              Edição Manual ({slides.length} slides)
+            </h3>
+            <div className="text-sm text-gray-400">
+              Mín: {MIN_SLIDES} | Máx: {MAX_SLIDES}
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 gap-4 max-h-[600px] overflow-y-auto pr-2">
+            {slides && slides.slice(0, MAX_SLIDES).map((slide, index) => (
+              <div key={slide.id} className="p-4 bg-gray-700 rounded-lg">
+                <Label className="text-white mb-2 block">
+                  Slide {index + 1}
+                  {index === slides.length - 1 && slides.length >= MIN_SLIDES && (
+                    <span className="ml-2 text-xs bg-green-500/20 text-green-300 px-2 py-1 rounded">
+                      Último slide
+                    </span>
+                  )}
+                </Label>
+                <Textarea 
+                  value={slide.content || ""} 
+                  onChange={e => onUpdateSlideContent(index, e.target.value)} 
+                  className="bg-gray-600 border-gray-500 text-white min-h-[100px]" 
+                  placeholder={
+                    index === 0 
+                      ? "Hook inicial - Chame a atenção do seu público..."
+                      : index === slides.length - 1 && slides.length >= MIN_SLIDES
+                      ? "Chamada para ação (CTA) - Convide para uma ação..."
+                      : `Conteúdo do slide ${index + 1}...`
+                  }
+                  rows={6}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );
