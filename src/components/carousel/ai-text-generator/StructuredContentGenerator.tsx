@@ -7,8 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Sparkles, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { generateAgentContent } from '@/firebase/functions/generateAgentContent';
-import { useFirebaseAPIKeyManager } from '@/hooks/useFirebaseAPIKeyManager';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface StructuredContentGeneratorProps {
   onContentGenerated: (content: any) => void;
@@ -24,9 +23,18 @@ const StructuredContentGenerator: React.FC<StructuredContentGeneratorProps> = ({
   const [slideCount, setSlideCount] = useState(5);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const { getBestAvailableKey, incrementKeyUsage } = useFirebaseAPIKeyManager();
+  const { user } = useAuth();
 
   const handleGenerate = async () => {
+    if (!user) {
+      toast({
+        title: "Login necessário",
+        description: "Você precisa estar logado para usar esta funcionalidade",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (!prompt.trim()) {
       toast({
         title: "Prompt obrigatório",
@@ -38,41 +46,37 @@ const StructuredContentGenerator: React.FC<StructuredContentGeneratorProps> = ({
 
     setLoading(true);
     try {
-      const apiKey = getBestAvailableKey();
-      if (!apiKey) {
-        toast({
-          title: "Chave API necessária",
-          description: "Configure uma chave do Google Gemini nas configurações",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      const result = await generateAgentContent({
-        agent: "yuri",
-        topic: prompt.trim(),
-        audience: targetAudience.trim() || "Público geral",
-        goal: "educar",
-        apiKey,
-        slideCount,
-        content: "",
-        prompt: "",
-        format: {
-          slideCounts: slideCount,
-          wordLimits: Array(slideCount).fill(25)
+      const response = await fetch('https://kjoevpxfgujzaekqfzyn.supabase.co/functions/v1/generate-ai-content', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtqb2V2cHhmZ3VqemFla3FmenluIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc3MzcxMjcsImV4cCI6MjA2MzMxMzEyN30.L945UdIgiGCowU3ueQNt-Wr8KhdZb6yPNZ4mG9X6L40`
         },
-        maxSlidesAllowed: 9
+        body: JSON.stringify({
+          agent: "yuri",
+          topic: prompt.trim(),
+          audience: targetAudience.trim() || "Público geral",
+          goal: "educar",
+          slideCount,
+          content: "",
+          prompt: ""
+        })
       });
 
-      if (result.success && result.parsedTexts) {
-        await incrementKeyUsage(apiKey);
-        onContentGenerated(result.parsedTexts);
+      if (!response.ok) {
+        throw new Error(`Erro na geração de conteúdo: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.success && data.parsedTexts) {
+        onContentGenerated(data.parsedTexts);
         toast({
           title: "Conteúdo gerado com sucesso!",
           description: `${slideCount} slides foram criados com base no seu prompt.`
         });
       } else {
-        throw new Error(result.error || "Erro ao gerar conteúdo");
+        throw new Error(data.error || "Erro ao gerar conteúdo");
       }
     } catch (error) {
       console.error('Erro ao gerar conteúdo:', error);

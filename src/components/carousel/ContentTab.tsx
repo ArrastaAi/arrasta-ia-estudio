@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Info } from "lucide-react";
-import FirebaseAITextGenerator from "@/components/carousel/FirebaseAITextGenerator";
+import AITextGenerator from "./AITextGenerator";
 import { useToast } from '@/hooks/use-toast';
 
 interface ContentTabProps {
@@ -27,7 +27,7 @@ const ContentTab: React.FC<ContentTabProps> = ({
   const MIN_SLIDES = 4;
   const MAX_SLIDES = 9;
   
-  const handleApplyCreativeTexts = (texts: { id: number; text: string }[]) => {
+  const handleApplyTexts = (texts: { id: number; text: string }[]) => {
     if (texts.length < MIN_SLIDES) {
       const completeTexts = [...texts];
       for (let i = texts.length; i < MIN_SLIDES; i++) {
@@ -40,7 +40,6 @@ const ContentTab: React.FC<ContentTabProps> = ({
       toast({
         title: "Slides completados",
         description: `Adicionados slides vazios para atingir o mínimo de ${MIN_SLIDES} slides.`,
-        variant: "default",
       });
       
       onApplyGeneratedTexts(completeTexts);
@@ -49,8 +48,7 @@ const ContentTab: React.FC<ContentTabProps> = ({
       
       toast({
         title: "Limite de slides",
-        description: `O número máximo de slides foi limitado a ${MAX_SLIDES}. Alguns slides gerados foram removidos.`,
-        variant: "default",
+        description: `O número máximo de slides foi limitado a ${MAX_SLIDES}.`,
       });
       
       onApplyGeneratedTexts(limitedTexts);
@@ -66,14 +64,13 @@ const ContentTab: React.FC<ContentTabProps> = ({
       <Alert className="bg-blue-500/10 border-blue-500/20">
         <Info className="h-4 w-4" />
         <AlertDescription className="text-blue-300">
-          <strong>Regras de conteúdo:</strong> Cada carrossel deve ter entre {MIN_SLIDES} e {MAX_SLIDES} slides.
-          Os agentes de IA irão adaptar automaticamente o conteúdo para a quantidade de slides configurada.
+          <strong>Regras:</strong> Cada carrossel deve ter entre {MIN_SLIDES} e {MAX_SLIDES} slides.
         </AlertDescription>
       </Alert>
       
-      <FirebaseAITextGenerator 
+      <AITextGenerator 
         carouselId={carouselId} 
-        onApplyTexts={handleApplyCreativeTexts}
+        onApplyTexts={handleApplyTexts}
         slideCount={slides.length || MIN_SLIDES}
       />
       
@@ -102,7 +99,7 @@ const ContentTab: React.FC<ContentTabProps> = ({
                 <Textarea 
                   value={slide.content || ""} 
                   onChange={e => onUpdateSlideContent(index, e.target.value)} 
-                  className="bg-gray-600 border-gray-500 text-white min-h-[150px]" 
+                  className="bg-gray-600 border-gray-500 text-white min-h-[100px]" 
                   placeholder={
                     index === 0 
                       ? "Hook inicial - Chame a atenção do seu público..."
@@ -110,7 +107,7 @@ const ContentTab: React.FC<ContentTabProps> = ({
                       ? "Chamada para ação (CTA) - Convide para uma ação..."
                       : `Conteúdo do slide ${index + 1}...`
                   }
-                  rows={8}
+                  rows={6}
                 />
               </div>
             ))}

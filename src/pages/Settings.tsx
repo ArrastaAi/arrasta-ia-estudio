@@ -1,15 +1,26 @@
+
 import React from 'react';
 import MainLayout from '@/components/layout/MainLayout';
-import FirebaseAPIKeyManagementPanel from '@/components/settings/FirebaseAPIKeyManagementPanel';
-import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Settings as SettingsIcon } from "lucide-react";
 
 const Settings = () => {
-  const { user, loading } = useFirebaseAuth();
+  const { user, loading } = useAuth();
 
-  // Redirecionar para a página de login se o usuário não estiver autenticado
   if (!loading && !user) {
     return <Navigate to="/auth" />;
+  }
+
+  if (loading) {
+    return (
+      <MainLayout>
+        <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+          <div className="animate-spin h-12 w-12 border-4 border-purple-500 border-t-transparent rounded-full"></div>
+        </div>
+      </MainLayout>
+    );
   }
 
   return (
@@ -19,15 +30,28 @@ const Settings = () => {
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-white mb-2">Configurações</h1>
             <p className="text-gray-400">
-              Gerencie suas configurações e chaves de API para integrações com serviços externos
+              Gerencie suas configurações de conta e preferências
             </p>
           </div>
 
           <div className="space-y-8">
-            {/* Painel de gerenciamento de chaves de API */}
-            <FirebaseAPIKeyManagementPanel className="w-full" />
-            
-            {/* Outros painéis de configuração podem ser adicionados aqui no futuro */}
+            <Card className="bg-gray-800 border-gray-700">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center">
+                  <SettingsIcon className="h-5 w-5 mr-2" />
+                  Configurações em Desenvolvimento
+                </CardTitle>
+                <CardDescription className="text-gray-400">
+                  Painel de configurações será implementado em breve
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="text-center py-8">
+                <p className="text-white text-lg mb-2">Em construção</p>
+                <p className="text-gray-400">
+                  Esta seção estará disponível em breve com opções de personalização e configurações avançadas.
+                </p>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>

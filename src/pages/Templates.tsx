@@ -4,10 +4,10 @@ import TemplateGallery from "@/components/templates/TemplateGallery";
 import { useNavigate } from "react-router-dom";
 import { Template } from "@/types/database.types";
 import { useToast } from "@/hooks/use-toast";
-import { useFirebaseAuth } from "@/contexts/FirebaseAuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Templates = () => {
-  const { user } = useFirebaseAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -23,10 +23,9 @@ const Templates = () => {
 
     toast({
       title: "Template selecionado",
-      description: `Você selecionou o template: ${template.title}`,
+      description: `Você selecionou o template: ${template.name}`,
     });
     
-    // Aqui você pode implementar a lógica para iniciar um novo carrossel com o template
     navigate("/create");
   };
 
