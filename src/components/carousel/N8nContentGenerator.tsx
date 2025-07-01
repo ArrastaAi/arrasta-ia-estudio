@@ -131,6 +131,8 @@ const N8nContentGenerator: React.FC<N8nContentGeneratorProps> = ({
         errorMessage = "Serviço N8N indisponível. Verifique a configuração do webhook.";
       } else if (error.message.includes('500')) {
         errorMessage = "Erro interno do servidor. Tente novamente em alguns minutos.";
+      } else if (error.message.includes('fetch')) {
+        errorMessage = "Problema de conectividade com o N8N. Verifique se o webhook está ativo.";
       } else if (error.message) {
         errorMessage = error.message;
       }
@@ -158,12 +160,6 @@ const N8nContentGenerator: React.FC<N8nContentGeneratorProps> = ({
 
   return (
     <div className="space-y-6">
-      <Alert className="bg-blue-500/10 border-blue-500/20">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription className="text-blue-300">
-          <strong>Limite:</strong> Cada carrossel pode ter entre 4 e 12 slides.
-        </AlertDescription>
-      </Alert>
 
       <Card className="bg-gray-800 border-gray-700">
         <CardHeader>

@@ -19,12 +19,14 @@ serve(async (req) => {
 
   try {
     const requestData = await req.json();
-    console.log('Solicitação N8N recebida:', requestData);
+    console.log('Solicitação N8N recebida:', JSON.stringify(requestData, null, 2));
 
     // URL corrigida do webhook N8N
     const n8nWebhookUrl = 'https://n8n-n8n-start.0v0jjw.easypanel.host/webhook/thread';
     
     console.log('Chamando N8N webhook:', n8nWebhookUrl);
+    console.log('Method:', req.method);
+    console.log('Headers:', JSON.stringify(Object.fromEntries(req.headers.entries()), null, 2));
 
     // Dados estruturados para envio ao N8N
     const n8nPayload = {
@@ -40,15 +42,18 @@ serve(async (req) => {
     console.log('Payload enviado ao N8N:', n8nPayload);
 
     // Chamar N8N webhook
+    console.log('Enviando requisição para N8N...');
     const response = await fetch(n8nWebhookUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'User-Agent': 'Supabase-Edge-Function',
       },
       body: JSON.stringify(n8nPayload),
     });
 
     console.log('Resposta N8N - Status:', response.status);
+    console.log('Resposta N8N - Headers:', JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2));
 
     if (!response.ok) {
       const errorText = await response.text();

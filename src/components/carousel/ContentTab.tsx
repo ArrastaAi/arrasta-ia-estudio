@@ -61,12 +61,6 @@ const ContentTab: React.FC<ContentTabProps> = ({
   
   return (
     <div className="space-y-6">
-      <Alert className="bg-blue-500/10 border-blue-500/20">
-        <Info className="h-4 w-4" />
-        <AlertDescription className="text-blue-300">
-          <strong>Regras:</strong> Cada carrossel deve ter entre {MIN_SLIDES} e {MAX_SLIDES} slides.
-        </AlertDescription>
-      </Alert>
       
       <N8nContentGenerator 
         carouselId={carouselId} 
