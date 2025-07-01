@@ -122,14 +122,48 @@ const AgentProgressIndicator: React.FC<AgentProgressProps> = ({
           })}
         </div>
 
-        {logs.length > 0 && (
-          <div className="space-y-1 max-h-32 overflow-y-auto">
-            <h4 className="text-xs text-gray-400 font-medium">Logs em tempo real:</h4>
-            {logs.slice(-5).map((log, index) => (
-              <div key={index} className="text-xs text-gray-500 font-mono">
-                {log}
+        {isStreaming && (
+          <div className="space-y-1 max-h-40 overflow-y-auto scroll-smooth" id="logs-container">
+            <div className="flex items-center gap-2">
+              <h4 className="text-xs text-gray-400 font-medium">Logs em tempo real:</h4>
+              {logs.length === 0 && (
+                <div className="flex items-center gap-1">
+                  <div className="w-1 h-1 bg-blue-400 rounded-full animate-pulse"></div>
+                  <div className="w-1 h-1 bg-blue-400 rounded-full animate-pulse delay-75"></div>
+                  <div className="w-1 h-1 bg-blue-400 rounded-full animate-pulse delay-150"></div>
+                </div>
+              )}
+            </div>
+            {logs.length === 0 ? (
+              <div className="text-xs text-gray-500 font-mono italic opacity-70 animate-pulse">
+                Aguardando inicialização dos agentes...
               </div>
-            ))}
+            ) : (
+              <div className="space-y-1">
+                {logs.slice(-10).map((log, index) => (
+                  <div 
+                    key={index} 
+                    className="text-xs text-gray-400 font-mono leading-relaxed animate-in fade-in duration-300 slide-in-from-left-2"
+                    style={{ animationDelay: `${index * 50}ms` }}
+                  >
+                    <span className="text-gray-600 mr-2">
+                      {new Date().toLocaleTimeString('pt-BR', { 
+                        hour: '2-digit', 
+                        minute: '2-digit', 
+                        second: '2-digit' 
+                      })}
+                    </span>
+                    {log}
+                  </div>
+                ))}
+                {isStreaming && logs.length > 0 && (
+                  <div className="flex items-center gap-1 mt-2">
+                    <div className="w-1 h-1 bg-green-400 rounded-full animate-pulse"></div>
+                    <span className="text-xs text-green-400 font-mono">Processando...</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </CardContent>
