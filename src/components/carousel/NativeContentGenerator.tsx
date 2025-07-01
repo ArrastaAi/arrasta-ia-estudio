@@ -52,6 +52,43 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
     context: ''
   });
 
+  const [isEditingGenerated, setIsEditingGenerated] = useState(false);
+  const [editableSlides, setEditableSlides] = useState<any[]>([]);
+
+  // Mostrar conteúdo gerado automaticamente se existir
+  React.useEffect(() => {
+    if (slides.length > 0) {
+      setEditableSlides(slides);
+    }
+  }, [slides]);
+
+  const handleSlideChange = (index: number, field: string, value: string | string[]) => {
+    setEditableSlides(prev => 
+      prev.map((slide, i) => 
+        i === index ? { ...slide, [field]: value } : slide
+      )
+    );
+  };
+
+  const handleApplyGeneratedContent = () => {
+    if (editableSlides.length > 0) {
+      const convertedTexts = editableSlides.map((slide, index) => ({
+        id: index + 1,
+        text: slide.title + (slide.subtitle ? `\n${slide.subtitle}` : '') + 
+              (slide.body.length > 0 ? `\n${slide.body.join('\n')}` : '')
+      }));
+      onApplyTexts(convertedTexts);
+      
+      // Navegar para a aba Design após aplicar
+      setTimeout(() => {
+        const designTab = document.querySelector('[value="design"]') as HTMLButtonElement;
+        if (designTab) {
+          designTab.click();
+        }
+      }, 500);
+    }
+  };
+
   const intentions = [
     { value: 'educar', label: 'Educar', icon: BookOpen, color: 'bg-blue-500' },
     { value: 'vender', label: 'Vender', icon: Target, color: 'bg-green-500' },
@@ -218,7 +255,92 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
         isStreaming={isStreaming}
       />
 
-      {/* Conteúdo será mostrado no ContentTab após geração */}
+      {/* Conteúdo Gerado para Edição */}
+      {slides.length > 0 && (
+        <Card className="bg-gray-800 border-gray-700">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-white flex items-center gap-2">
+                <Wand2 className="h-5 w-5" />
+                Conteúdo Gerado ({slides.length} slides)
+              </CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsEditingGenerated(!isEditingGenerated)}
+                className="border-gray-600 text-gray-300 hover:bg-gray-700"
+              >
+                {isEditingGenerated ? 'Visualizar' : 'Editar'}
+              </Button>
+            </div>
+            <CardDescription className="text-gray-400">
+              Revise e edite o conteúdo antes de aplicar ao designer
+            </CardDescription>
+          </CardHeader>
+          
+          <CardContent className="space-y-4">
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {editableSlides.map((slide, index) => (
+                <div key={index} className="p-4 bg-gray-700 rounded-lg border-l-4 border-purple-500">
+                  <div className="flex justify-between items-start mb-2">
+                    <Label className="text-purple-400 font-medium text-sm">
+                      Slide {index + 1}
+                    </Label>
+                  </div>
+                  
+                  {isEditingGenerated ? (
+                    <div className="space-y-2">
+                      <Input
+                        value={slide.title}
+                        onChange={(e) => handleSlideChange(index, 'title', e.target.value)}
+                        placeholder="Título"
+                        className="bg-gray-600 border-gray-500 text-white font-bold"
+                      />
+                      <Input
+                        value={slide.subtitle}
+                        onChange={(e) => handleSlideChange(index, 'subtitle', e.target.value)}
+                        placeholder="Subtítulo"
+                        className="bg-gray-600 border-gray-500 text-white"
+                      />
+                      <Textarea
+                        value={slide.body.join('\n')}
+                        onChange={(e) => handleSlideChange(index, 'body', e.target.value.split('\n'))}
+                        placeholder="Corpo do texto (uma linha por item)"
+                        className="bg-gray-600 border-gray-500 text-white min-h-[80px]"
+                        rows={3}
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <h3 className="text-white font-bold text-sm">
+                        {slide.title}
+                      </h3>
+                      <p className="text-gray-300 text-sm">
+                        {slide.subtitle}
+                      </p>
+                      <div className="space-y-1">
+                        {slide.body.map((line: string, lineIndex: number) => (
+                          <p key={lineIndex} className="text-white text-sm leading-relaxed">
+                            {line}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            
+            <Button 
+              onClick={handleApplyGeneratedContent}
+              className="w-full bg-gradient-to-r from-green-500 to-blue-500 hover:opacity-90 font-medium"
+            >
+              <Wand2 className="mr-2 h-4 w-4" />
+              Aplicar ao Designer
+            </Button>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };
