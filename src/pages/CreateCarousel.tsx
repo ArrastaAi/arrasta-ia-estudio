@@ -16,10 +16,10 @@ const layoutOptions = [
   { 
     id: "instagram_rect", 
     name: "Instagram", 
-    subtitle: "Retangular 4:5",
+    subtitle: "Vertical 5:4",
     icon: <Instagram className="w-8 h-8" />, 
     recommended: true,
-    aspectRatio: "4:5",
+    aspectRatio: "5:4",
     preview: "270x190"
   },
   { 

@@ -1,4 +1,3 @@
-
 import { useMemo } from 'react';
 
 export type LayoutType = 
@@ -59,7 +58,7 @@ export const useLayoutStyles = (layoutType: string): LayoutStylesHook => {
         case "facebook":
           return 16/9; // proporção 16:9 para Facebook
         case "instagram_rect":
-          return 4/5; // proporção 4:5 para Instagram (1080x1350)
+          return 5/4; // proporção 5:4 para Instagram (vertical)
         case "tiktok":
           return 9/16; // proporção 9:16 para TikTok
         case "newspaper":
@@ -78,9 +77,9 @@ export const useLayoutStyles = (layoutType: string): LayoutStylesHook => {
         case "manifesto":
         case "statistics":
         case "case_study":
-          return 4/5; // Proporção Instagram para posts editoriais
+          return 5/4; // Proporção Instagram vertical para posts editoriais
         case "long_form":
-          return 4/5; // Artigo formato mais comprido
+          return 5/4; // Artigo formato vertical
         // Novos layouts de livros
         case "fiction_cover":
         case "memoir":
@@ -90,9 +89,9 @@ export const useLayoutStyles = (layoutType: string): LayoutStylesHook => {
         case "nonfiction_cover":
           return 3/4; // Proporção para não-ficção
         case "academic":
-          return 4/5; // Proporção para livros acadêmicos
+          return 5/4; // Proporção para livros acadêmicos
         default:
-          return 4/5; // Padrão para Instagram Feed (4:5)
+          return 5/4; // Padrão para Instagram Feed (5:4)
       }
     };
   }, [layoutType]);
@@ -108,7 +107,7 @@ export const useLayoutStyles = (layoutType: string): LayoutStylesHook => {
         case "pinterest":
           return "w-64 h-[384px]";
         case "instagram_rect":
-          return "w-full max-w-md aspect-[4/5]";
+          return "w-full max-w-md aspect-[5/4]";
         case "facebook":
           return "w-full max-w-lg aspect-[16/9]";
         case "tiktok":
@@ -130,7 +129,7 @@ export const useLayoutStyles = (layoutType: string): LayoutStylesHook => {
         case "statistics":
         case "case_study":
         case "long_form":
-          return "w-full max-w-md aspect-[4/5]";
+          return "w-full max-w-md aspect-[5/4]";
         // Novos layouts de livros
         case "fiction_cover":
         case "memoir":
@@ -140,9 +139,9 @@ export const useLayoutStyles = (layoutType: string): LayoutStylesHook => {
         case "nonfiction_cover":
           return "w-72 h-[384px]"; // Proporção 3:4 para não-ficção
         case "academic":
-          return "w-full max-w-md aspect-[4/5]"; // Proporção para livros acadêmicos
+          return "w-full max-w-md aspect-[5/4]"; // Proporção para livros acadêmicos
         default:
-          return "w-full max-w-md aspect-[4/5]"; // Padrão para Instagram Feed
+          return "w-full max-w-md aspect-[5/4]"; // Padrão para Instagram Feed
       }
     };
   }, [layoutType]);

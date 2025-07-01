@@ -31,6 +31,8 @@ export const getLayoutAspectRatio = (layoutType: string) => {
       return "aspect-[2/3]";
     case "facebook":
       return "aspect-[16/10]";
+    case "instagram_rect":
+      return "aspect-[5/4]";
     default:
       return "aspect-video";
   }
@@ -42,6 +44,7 @@ export const getLayoutDisplayName = (layoutType: string) => {
     case "stories": return "Stories (9:16)";
     case "pinterest": return "Pinterest (2:3)";
     case "facebook": return "Facebook (16:10)";
+    case "instagram_rect": return "Instagram (Vertical 5:4)";
     default: return "Padrão (16:9)";
   }
 };
