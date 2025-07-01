@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
 interface SlideContent {
@@ -21,7 +21,7 @@ interface StreamingState {
   error: string | null;
 }
 
-export const useStreamingGeneration = (carouselId?: string) => {
+export const useStreamingGeneration = () => {
   const [state, setState] = useState<StreamingState>({
     isStreaming: false,
     progress: null,
@@ -30,62 +30,6 @@ export const useStreamingGeneration = (carouselId?: string) => {
     error: null
   });
   const { toast } = useToast();
-
-  // Chave para localStorage baseada no carouselId
-  const getStorageKey = useCallback((id: string) => `generated_content_${id}`, []);
-
-  // Salvar no localStorage
-  const saveToStorage = useCallback((data: StreamingState, id: string) => {
-    try {
-      const storageData = {
-        ...data,
-        timestamp: Date.now()
-      };
-      localStorage.setItem(getStorageKey(id), JSON.stringify(storageData));
-    } catch (error) {
-      console.warn('Erro ao salvar no localStorage:', error);
-    }
-  }, [getStorageKey]);
-
-  // Carregar do localStorage
-  const loadFromStorage = useCallback((id: string) => {
-    try {
-      const stored = localStorage.getItem(getStorageKey(id));
-      if (stored) {
-        const data = JSON.parse(stored);
-        return {
-          isStreaming: false,
-          progress: data.progress,
-          logs: data.logs || [],
-          slides: data.slides || [],
-          error: data.error,
-          timestamp: data.timestamp
-        };
-      }
-    } catch (error) {
-      console.warn('Erro ao carregar do localStorage:', error);
-    }
-    return null;
-  }, [getStorageKey]);
-
-  // Limpar localStorage
-  const clearStorage = useCallback((id: string) => {
-    try {
-      localStorage.removeItem(getStorageKey(id));
-    } catch (error) {
-      console.warn('Erro ao limpar localStorage:', error);
-    }
-  }, [getStorageKey]);
-
-  // Carregar dados salvos ao inicializar
-  useEffect(() => {
-    if (carouselId) {
-      const saved = loadFromStorage(carouselId);
-      if (saved) {
-        setState(saved);
-      }
-    }
-  }, [carouselId, loadFromStorage]);
 
   const startStreaming = useCallback(async (request: any) => {
     setState({
@@ -139,27 +83,19 @@ export const useStreamingGeneration = (carouselId?: string) => {
                 const data = JSON.parse(content);
                 
                 if (data.stage) {
-                  setState(prev => {
-                    const newState = {
-                      ...prev,
-                      progress: data,
-                      logs: [...prev.logs, data.message]
-                    };
-                    if (carouselId) saveToStorage(newState, carouselId);
-                    return newState;
-                  });
+                  setState(prev => ({
+                    ...prev,
+                    progress: data,
+                    logs: [...prev.logs, data.message]
+                  }));
                 } else if (data.success !== undefined) {
                   if (data.success) {
-                    setState(prev => {
-                      const newState = {
-                        ...prev,
-                        isStreaming: false,
-                        slides: data.slides || [],
-                        logs: [...prev.logs, data.message]
-                      };
-                      if (carouselId) saveToStorage(newState, carouselId);
-                      return newState;
-                    });
+                    setState(prev => ({
+                      ...prev,
+                      isStreaming: false,
+                      slides: data.slides || [],
+                      logs: [...prev.logs, data.message]
+                    }));
                     
                     toast({
                       title: "Conteúdo gerado com sucesso!",
@@ -203,31 +139,11 @@ export const useStreamingGeneration = (carouselId?: string) => {
       slides: [],
       error: null
     });
-    if (carouselId) {
-      clearStorage(carouselId);
-    }
-  }, [carouselId, clearStorage]);
-
-  const clearAll = useCallback(() => {
-    if (carouselId) {
-      clearStorage(carouselId);
-    }
-    setState({
-      isStreaming: false,
-      progress: null,
-      logs: [],
-      slides: [],
-      error: null
-    });
-  }, [carouselId, clearStorage]);
-
-  const hasContent = state.slides.length > 0 || state.logs.length > 0;
+  }, []);
 
   return {
     ...state,
     startStreaming,
-    reset,
-    clearAll,
-    hasContent
+    reset
   };
 };

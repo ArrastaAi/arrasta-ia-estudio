@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Wand2, Users, Target, BookOpen, Settings } from 'lucide-react';
+import { Loader2, Wand2, Check, Edit3, Users, Target, BookOpen, Settings } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStreamingGeneration } from '@/hooks/useStreamingGeneration';
@@ -34,6 +34,8 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
 }) => {
   const { toast } = useToast();
   const { user } = useAuth();
+  const [generatedSlides, setGeneratedSlides] = useState<SlideContent[]>([]);
+  const [isEditing, setIsEditing] = useState(false);
   const { 
     isStreaming, 
     progress, 
@@ -42,7 +44,7 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
     error, 
     startStreaming, 
     reset 
-  } = useStreamingGeneration(carouselId);
+  } = useStreamingGeneration();
   
   const [formData, setFormData] = useState({
     topic: '',
@@ -51,43 +53,6 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
     slideCount: 5,
     context: ''
   });
-
-  const [isEditingGenerated, setIsEditingGenerated] = useState(false);
-  const [editableSlides, setEditableSlides] = useState<any[]>([]);
-
-  // Mostrar conteúdo gerado automaticamente se existir
-  React.useEffect(() => {
-    if (slides.length > 0) {
-      setEditableSlides(slides);
-    }
-  }, [slides]);
-
-  const handleSlideChange = (index: number, field: string, value: string | string[]) => {
-    setEditableSlides(prev => 
-      prev.map((slide, i) => 
-        i === index ? { ...slide, [field]: value } : slide
-      )
-    );
-  };
-
-  const handleApplyGeneratedContent = () => {
-    if (editableSlides.length > 0) {
-      const convertedTexts = editableSlides.map((slide, index) => ({
-        id: index + 1,
-        text: slide.title + (slide.subtitle ? `\n${slide.subtitle}` : '') + 
-              (slide.body.length > 0 ? `\n${slide.body.join('\n')}` : '')
-      }));
-      onApplyTexts(convertedTexts);
-      
-      // Navegar para a aba Design após aplicar
-      setTimeout(() => {
-        const designTab = document.querySelector('[value="design"]') as HTMLButtonElement;
-        if (designTab) {
-          designTab.click();
-        }
-      }, 500);
-    }
-  };
 
   const intentions = [
     { value: 'educar', label: 'Educar', icon: BookOpen, color: 'bg-blue-500' },
@@ -99,6 +64,21 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
 
   const handleInputChange = (field: string, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSlideChange = (index: number, field: keyof SlideContent, value: string | string[]) => {
+    setGeneratedSlides(prev => 
+      prev.map((slide, i) => 
+        i === index ? { ...slide, [field]: value } : slide
+      )
+    );
+  };
+
+  const convertSlidesToTexts = (slides: SlideContent[]): GeneratedText[] => {
+    return slides.map((slide, index) => ({
+      id: index + 1,
+      text: slide.title + '\n\n' + slide.subtitle + '\n\n' + slide.body.join('\n')
+    }));
   };
 
   const handleGenerate = async () => {
@@ -121,6 +101,7 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
     }
 
     reset();
+    setGeneratedSlides([]);
     
     await startStreaming({
       topic: formData.topic,
@@ -128,6 +109,19 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
       intention: formData.intention,
       slideCount: formData.slideCount,
       context: formData.context
+    });
+  };
+
+  const handleApplyContent = () => {
+    const slidesToApply = slides.length > 0 ? slides : generatedSlides;
+    if (slidesToApply.length === 0) return;
+    
+    const texts = convertSlidesToTexts(slidesToApply);
+    onApplyTexts(texts);
+    
+    toast({
+      title: "Conteúdo aplicado!",
+      description: slidesToApply.length + " slides foram aplicados ao carrossel."
     });
   };
 
@@ -255,32 +249,36 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
         isStreaming={isStreaming}
       />
 
-      {/* Conteúdo Gerado para Edição */}
-      {slides.length > 0 && (
+      {(slides.length > 0 || generatedSlides.length > 0) && (
         <Card className="bg-gray-800 border-gray-700">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-white flex items-center gap-2">
-                <Wand2 className="h-5 w-5" />
-                Conteúdo Gerado ({slides.length} slides)
+                <Edit3 className="h-5 w-5" />
+                Conteúdo Gerado ({(slides.length > 0 ? slides : generatedSlides).length} slides)
+                {selectedIntention && (
+                  <Badge variant="secondary" className={`ml-2 ${selectedIntention.color} text-white`}>
+                    {selectedIntention.label}
+                  </Badge>
+                )}
               </CardTitle>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setIsEditingGenerated(!isEditingGenerated)}
+                onClick={() => setIsEditing(!isEditing)}
                 className="border-gray-600 text-gray-300 hover:bg-gray-700"
               >
-                {isEditingGenerated ? 'Visualizar' : 'Editar'}
+                {isEditing ? 'Visualizar' : 'Editar'}
               </Button>
             </div>
             <CardDescription className="text-gray-400">
-              Revise e edite o conteúdo antes de aplicar ao designer
+              Conteúdo refinado pelos agentes especializados
             </CardDescription>
           </CardHeader>
           
           <CardContent className="space-y-4">
             <div className="space-y-3 max-h-96 overflow-y-auto">
-              {editableSlides.map((slide, index) => (
+              {(slides.length > 0 ? slides : generatedSlides).map((slide, index) => (
                 <div key={index} className="p-4 bg-gray-700 rounded-lg border-l-4 border-purple-500">
                   <div className="flex justify-between items-start mb-2">
                     <Label className="text-purple-400 font-medium text-sm">
@@ -288,7 +286,7 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
                     </Label>
                   </div>
                   
-                  {isEditingGenerated ? (
+                  {isEditing ? (
                     <div className="space-y-2">
                       <Input
                         value={slide.title}
@@ -319,7 +317,7 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
                         {slide.subtitle}
                       </p>
                       <div className="space-y-1">
-                        {slide.body.map((line: string, lineIndex: number) => (
+                        {slide.body.map((line, lineIndex) => (
                           <p key={lineIndex} className="text-white text-sm leading-relaxed">
                             {line}
                           </p>
@@ -332,11 +330,11 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
             </div>
             
             <Button 
-              onClick={handleApplyGeneratedContent}
+              onClick={handleApplyContent}
               className="w-full bg-gradient-to-r from-green-500 to-blue-500 hover:opacity-90 font-medium"
             >
-              <Wand2 className="mr-2 h-4 w-4" />
-              Aplicar ao Designer
+              <Check className="mr-2 h-4 w-4" />
+              Aplicar Conteúdo ao Carrossel
             </Button>
           </CardContent>
         </Card>
