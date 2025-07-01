@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Info } from "lucide-react";
-import N8nContentGenerator from "./N8nContentGenerator";
+import NativeContentGenerator from "./NativeContentGenerator";
 import { useToast } from '@/hooks/use-toast';
 
 interface ContentTabProps {
@@ -62,7 +62,7 @@ const ContentTab: React.FC<ContentTabProps> = ({
   return (
     <div className="space-y-6">
       
-      <N8nContentGenerator 
+      <NativeContentGenerator 
         carouselId={carouselId} 
         onApplyTexts={handleApplyTexts}
       />

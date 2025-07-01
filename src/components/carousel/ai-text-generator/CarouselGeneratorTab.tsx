@@ -1,6 +1,6 @@
 import React from 'react';
 import { CarouselFormFields } from "./CarouselFormFields";
-import { useTextGeneration } from "@/hooks/useTextGeneration";
+import { useCarouselGeneration } from "@/hooks/useCarouselGeneration";
 
 interface CarouselGeneratorTabProps {
   // Add any props here
@@ -8,10 +8,14 @@ interface CarouselGeneratorTabProps {
 
 const CarouselGeneratorTab: React.FC<CarouselGeneratorTabProps> = () => {
   const {
-    formData,
-    handleInputChange,
-    setFormData
-  } = useTextGeneration(() => {});
+    generateCarouselContent,
+    loading
+  } = useCarouselGeneration();
+  
+  // Mock formData for compatibility
+  const formData = { prompt: '', topic: '', audience: '', goal: '', content: '' };
+  const handleInputChange = () => {};
+  const setFormData = () => {};
 
   return (
     <div className="space-y-4">

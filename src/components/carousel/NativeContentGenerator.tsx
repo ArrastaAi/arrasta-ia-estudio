@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,30 +5,37 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Wand2, AlertCircle, Check, Edit3 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, Wand2, Check, Edit3, Users, Target, BookOpen, Settings } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+
+interface SlideContent {
+  title: string;
+  subtitle: string;
+  body: string[];
+}
 
 interface GeneratedText {
   id: number;
   text: string;
 }
 
-interface N8nContentGeneratorProps {
+interface NativeContentGeneratorProps {
   carouselId: string;
   onApplyTexts: (texts: GeneratedText[]) => void;
 }
 
-const N8nContentGenerator: React.FC<N8nContentGeneratorProps> = ({
+const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
   carouselId,
   onApplyTexts
 }) => {
   const { toast } = useToast();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [generatedTexts, setGeneratedTexts] = useState<GeneratedText[]>([]);
+  const [generatedSlides, setGeneratedSlides] = useState<SlideContent[]>([]);
   const [isEditing, setIsEditing] = useState(false);
+  const [agentLogs, setAgentLogs] = useState<string[]>([]);
   
   const [formData, setFormData] = useState({
     topic: '',
@@ -40,21 +46,30 @@ const N8nContentGenerator: React.FC<N8nContentGeneratorProps> = ({
   });
 
   const intentions = [
-    { value: 'educar', label: 'Educar' },
-    { value: 'vender', label: 'Vender' },
-    { value: 'engajar', label: 'Engajar' },
-    { value: 'gerar-consciencia', label: 'Gerar Consciência' },
-    { value: 'storytelling', label: 'Storytelling' }
+    { value: 'educar', label: 'Educar', icon: BookOpen, color: 'bg-blue-500' },
+    { value: 'vender', label: 'Vender', icon: Target, color: 'bg-green-500' },
+    { value: 'engajar', label: 'Engajar', icon: Users, color: 'bg-purple-500' },
+    { value: 'gerar-consciencia', label: 'Conscientizar', icon: Settings, color: 'bg-orange-500' },
+    { value: 'storytelling', label: 'Storytelling', icon: BookOpen, color: 'bg-pink-500' }
   ];
 
   const handleInputChange = (field: string, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleTextChange = (id: number, newText: string) => {
-    setGeneratedTexts(prev => 
-      prev.map(text => text.id === id ? { ...text, text: newText } : text)
+  const handleSlideChange = (index: number, field: keyof SlideContent, value: string | string[]) => {
+    setGeneratedSlides(prev => 
+      prev.map((slide, i) => 
+        i === index ? { ...slide, [field]: value } : slide
+      )
     );
+  };
+
+  const convertSlidesToTexts = (slides: SlideContent[]): GeneratedText[] => {
+    return slides.map((slide, index) => ({
+      id: index + 1,
+      text: slide.title + '\n\n' + slide.subtitle + '\n\n' + slide.body.join('\n')
+    }));
   };
 
   const handleGenerate = async () => {
@@ -77,12 +92,12 @@ const N8nContentGenerator: React.FC<N8nContentGeneratorProps> = ({
     }
 
     setLoading(true);
+    setAgentLogs([]);
     
     try {
-      console.log('Iniciando geração de conteúdo...');
-      console.log('Dados do formulário:', formData);
+      console.log('Iniciando geracao nativa com agentes...', formData);
 
-      const response = await fetch('https://kjoevpxfgujzaekqfzyn.supabase.co/functions/v1/generate-ai-content', {
+      const response = await fetch('https://kjoevpxfgujzaekqfzyn.supabase.co/functions/v1/generate-carousel-content', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -102,43 +117,44 @@ const N8nContentGenerator: React.FC<N8nContentGeneratorProps> = ({
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Erro da Edge Function:', errorText);
-        throw new Error(`Erro na geração: ${response.status} - ${errorText}`);
+        throw new Error('Erro na geracao: ' + response.status + ' - ' + errorText);
       }
 
       const data = await response.json();
       console.log('Dados recebidos:', data);
 
-      if (data.success && data.parsedTexts && Array.isArray(data.parsedTexts)) {
-        console.log(`${data.parsedTexts.length} slides gerados`);
-        setGeneratedTexts(data.parsedTexts);
+      if (data.success && data.slides && Array.isArray(data.slides)) {
+        console.log(data.slides.length + ' slides gerados com sucesso');
+        setGeneratedSlides(data.slides);
+        setAgentLogs(data.agent_logs || []);
         setIsEditing(false);
         
         toast({
           title: "Conteúdo gerado com sucesso!",
-          description: `${data.parsedTexts.length} slides foram gerados. Revise e edite se necessário.`
+          description: data.slides.length + " slides foram criados pelos agentes especializados."
         });
       } else {
-        console.error('Dados inválidos recebidos:', data);
+        console.error('Dados invalidos recebidos:', data);
         throw new Error(data.error || "Erro ao processar resposta da geração");
       }
 
     } catch (error: any) {
-      console.error('Erro completo ao gerar conteúdo:', error);
+      console.error('Erro completo ao gerar conteudo:', error);
       
-      let errorMessage = "Houve um problema na geração. Tente novamente.";
+      let errorMessage = "Houve um problema na geracao. Tente novamente.";
       
       if (error.message.includes('404')) {
-        errorMessage = "Serviço N8N indisponível. Verifique a configuração do webhook.";
+        errorMessage = "Servico de geracao indisponivel. Verifique a configuracao.";
       } else if (error.message.includes('500')) {
         errorMessage = "Erro interno do servidor. Tente novamente em alguns minutos.";
       } else if (error.message.includes('fetch')) {
-        errorMessage = "Problema de conectividade com o N8N. Verifique se o webhook está ativo.";
+        errorMessage = "Problema de conectividade. Verifique sua conexao.";
       } else if (error.message) {
         errorMessage = error.message;
       }
       
       toast({
-        title: "Erro ao gerar conteúdo",
+        title: "Erro ao gerar conteudo",
         description: errorMessage,
         variant: "destructive"
       });
@@ -148,27 +164,29 @@ const N8nContentGenerator: React.FC<N8nContentGeneratorProps> = ({
   };
 
   const handleApplyContent = () => {
-    if (generatedTexts.length === 0) return;
+    if (generatedSlides.length === 0) return;
     
-    onApplyTexts(generatedTexts);
+    const texts = convertSlidesToTexts(generatedSlides);
+    onApplyTexts(texts);
     
-    toast({
-      title: "Conteúdo aplicado!",
-      description: `${generatedTexts.length} slides foram aplicados ao carrossel. Acesse a aba Designer para continuar editando.`
-    });
+      toast({
+        title: "Conteúdo aplicado!",
+        description: generatedSlides.length + " slides foram aplicados ao carrossel."
+      });
   };
+
+  const selectedIntention = intentions.find(i => i.value === formData.intention);
 
   return (
     <div className="space-y-6">
-
       <Card className="bg-gray-800 border-gray-700">
         <CardHeader>
           <CardTitle className="text-white flex items-center gap-2">
             <Wand2 className="h-5 w-5" />
-            Gerador de Conteúdo IA
+            Gerador Nativo de Conteúdo IA
           </CardTitle>
           <CardDescription className="text-gray-400">
-            Configure os parâmetros para gerar conteúdo personalizado via N8N
+            Sistema de agentes especializados: Roteirista → Copywriter → Editor → Supervisor
           </CardDescription>
         </CardHeader>
         
@@ -196,7 +214,7 @@ const N8nContentGenerator: React.FC<N8nContentGeneratorProps> = ({
           </div>
 
           <div>
-            <Label htmlFor="intention" className="text-white">Intenção</Label>
+            <Label htmlFor="intention" className="text-white">Estratégia de Conteúdo</Label>
             <Select 
               value={formData.intention} 
               onValueChange={(value) => handleInputChange('intention', value)}
@@ -205,11 +223,22 @@ const N8nContentGenerator: React.FC<N8nContentGeneratorProps> = ({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-gray-700 border-gray-600">
-                {intentions.map((intention) => (
-                  <SelectItem key={intention.value} value={intention.value} className="text-white hover:bg-gray-600">
-                    {intention.label}
-                  </SelectItem>
-                ))}
+                {intentions.map((intention) => {
+                  const IconComponent = intention.icon;
+                  return (
+                    <SelectItem 
+                      key={intention.value} 
+                      value={intention.value} 
+                      className="text-white hover:bg-gray-600"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${intention.color}`}></div>
+                        <IconComponent className="h-4 w-4" />
+                        {intention.label}
+                      </div>
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
           </div>
@@ -247,30 +276,52 @@ const N8nContentGenerator: React.FC<N8nContentGeneratorProps> = ({
           <Button 
             onClick={handleGenerate}
             disabled={loading || !formData.topic.trim()}
-            className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50"
+            className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:opacity-90"
           >
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Gerando conteúdo...
+                Agentes trabalhando...
               </>
             ) : (
               <>
                 <Wand2 className="mr-2 h-4 w-4" />
-                Gerar Conteúdo
+                Gerar com Agentes IA
               </>
             )}
           </Button>
         </CardContent>
       </Card>
 
-      {generatedTexts.length > 0 && (
+      {agentLogs.length > 0 && (
+        <Card className="bg-gray-800 border-gray-700">
+          <CardHeader>
+            <CardTitle className="text-white text-sm">🔍 Log dos Agentes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-1">
+              {agentLogs.map((log, index) => (
+                <div key={index} className="text-xs text-gray-400 font-mono">
+                  {log}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {generatedSlides.length > 0 && (
         <Card className="bg-gray-800 border-gray-700">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-white flex items-center gap-2">
                 <Edit3 className="h-5 w-5" />
-                Conteúdo Gerado ({generatedTexts.length} slides)
+                Conteúdo Gerado ({generatedSlides.length} slides)
+                {selectedIntention && (
+                  <Badge variant="secondary" className={`ml-2 ${selectedIntention.color} text-white`}>
+                    {selectedIntention.label}
+                  </Badge>
+                )}
               </CardTitle>
               <Button
                 variant="outline"
@@ -282,31 +333,58 @@ const N8nContentGenerator: React.FC<N8nContentGeneratorProps> = ({
               </Button>
             </div>
             <CardDescription className="text-gray-400">
-              Revise e edite o conteúdo antes de aplicar ao carrossel
+              Conteúdo refinado pelos agentes especializados
             </CardDescription>
           </CardHeader>
           
           <CardContent className="space-y-4">
             <div className="space-y-3 max-h-96 overflow-y-auto">
-              {generatedTexts.map((text) => (
-                <div key={text.id} className="p-4 bg-gray-700 rounded-lg border-l-4 border-purple-500">
+              {generatedSlides.map((slide, index) => (
+                <div key={index} className="p-4 bg-gray-700 rounded-lg border-l-4 border-purple-500">
                   <div className="flex justify-between items-start mb-2">
                     <Label className="text-purple-400 font-medium text-sm">
-                      Slide {text.id}
+                      Slide {index + 1}
                     </Label>
                   </div>
                   
                   {isEditing ? (
-                    <Textarea
-                      value={text.text}
-                      onChange={(e) => handleTextChange(text.id, e.target.value)}
-                      className="bg-gray-600 border-gray-500 text-white min-h-[80px] resize-none"
-                      rows={3}
-                    />
+                    <div className="space-y-2">
+                      <Input
+                        value={slide.title}
+                        onChange={(e) => handleSlideChange(index, 'title', e.target.value)}
+                        placeholder="Título"
+                        className="bg-gray-600 border-gray-500 text-white font-bold"
+                      />
+                      <Input
+                        value={slide.subtitle}
+                        onChange={(e) => handleSlideChange(index, 'subtitle', e.target.value)}
+                        placeholder="Subtítulo"
+                        className="bg-gray-600 border-gray-500 text-white"
+                      />
+                      <Textarea
+                        value={slide.body.join('\n')}
+                        onChange={(e) => handleSlideChange(index, 'body', e.target.value.split('\n'))}
+                        placeholder="Corpo do texto (uma linha por item)"
+                        className="bg-gray-600 border-gray-500 text-white min-h-[80px]"
+                        rows={3}
+                      />
+                    </div>
                   ) : (
-                    <p className="text-white text-sm leading-relaxed">
-                      {text.text}
-                    </p>
+                    <div className="space-y-2">
+                      <h3 className="text-white font-bold text-sm">
+                        {slide.title}
+                      </h3>
+                      <p className="text-gray-300 text-sm">
+                        {slide.subtitle}
+                      </p>
+                      <div className="space-y-1">
+                        {slide.body.map((line, lineIndex) => (
+                          <p key={lineIndex} className="text-white text-sm leading-relaxed">
+                            {line}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 </div>
               ))}
@@ -314,7 +392,7 @@ const N8nContentGenerator: React.FC<N8nContentGeneratorProps> = ({
             
             <Button 
               onClick={handleApplyContent}
-              className="w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:opacity-90 font-medium"
+              className="w-full bg-gradient-to-r from-green-500 to-blue-500 hover:opacity-90 font-medium"
             >
               <Check className="mr-2 h-4 w-4" />
               Aplicar Conteúdo ao Carrossel
@@ -326,4 +404,4 @@ const N8nContentGenerator: React.FC<N8nContentGeneratorProps> = ({
   );
 };
 
-export default N8nContentGenerator;
+export default NativeContentGenerator;
