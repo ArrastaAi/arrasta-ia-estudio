@@ -3,8 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useFirebaseAuth } from "@/contexts/FirebaseAuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { db } from "@/integrations/firebase/client";
-import { collection, query, where, getDocs, deleteDoc, doc } from "firebase/firestore";
+import { supabase } from "@/integrations/supabase/client";
 import { Carousel } from "@/types/database.types";
 
 export const useDashboardCarousels = () => {
@@ -25,29 +24,20 @@ export const useDashboardCarousels = () => {
       setLoading(true);
       console.log('[Dashboard] Iniciando busca de carrosséis para usuário:', user.uid);
 
-      const carouselsCollectionRef = collection(db, "carousels");
-      const carouselsQuery = query(
-        carouselsCollectionRef,
-        where("user_id", "==", user.uid)
-      );
+      const { data, error } = await supabase
+        .from('carousels')
+        .select('*')
+        .eq('user_id', user.uid)
+        .order('updated_at', { ascending: false });
 
-      const carouselsSnapshot = await getDocs(carouselsQuery);
+      if (error) {
+        throw error;
+      }
 
-      const carouselsList: Carousel[] = carouselsSnapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          ...data,
-          layout_type: data.layout_type || "instagram_rect",
-        } as Carousel;
-      });
-
-      // Ordenar por data de atualização
-      carouselsList.sort((a, b) => {
-        const dateA = new Date(a.updated_at || a.created_at || 0).getTime();
-        const dateB = new Date(b.updated_at || b.created_at || 0).getTime();
-        return dateB - dateA;
-      });
+      const carouselsList: Carousel[] = (data || []).map(carousel => ({
+        ...carousel,
+        layout_type: carousel.layout_type || "instagram_rect",
+      }));
 
       console.log('[Dashboard] Carrosséis carregados:', carouselsList.length);
       setCarousels(carouselsList);
@@ -69,8 +59,14 @@ export const useDashboardCarousels = () => {
       setLoading(true);
       console.log('[Dashboard] Excluindo carrossel:', id);
       
-      const carouselDocRef = doc(db, "carousels", id);
-      await deleteDoc(carouselDocRef);
+      const { error } = await supabase
+        .from('carousels')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        throw error;
+      }
 
       setCarousels(carousels.filter((carousel) => carousel.id !== id));
       
@@ -91,7 +87,7 @@ export const useDashboardCarousels = () => {
 
   useEffect(() => {
     fetchCarousels();
-  }, [user, navigate, toast]);
+  }, [user, navigate]);
 
   return {
     carousels,

@@ -6,12 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, ArrowRight, Instagram, LayoutGrid, RectangleVertical, RectangleHorizontal, Image } from "lucide-react";
+import { ArrowLeft, ArrowRight, Instagram, LayoutGrid, RectangleVertical, RectangleHorizontal } from "lucide-react";
 import MainLayout from "@/components/layout/MainLayout";
-import { firestore } from "@/integrations/firebase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useFirebaseAuth } from "@/contexts/FirebaseAuthContext";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { supabase } from "@/integrations/supabase/client";
 
 const layoutOptions = [
   { 
@@ -92,24 +91,30 @@ const CreateCarousel = () => {
     try {
       setLoading(true);
 
-      const carouselCollectionRef = collection(firestore, "carousels");
-      const carouselData = {
-        ...formData,
-        user_id: user?.uid,
-        published: false,
-        created_at: serverTimestamp(),
-        updated_at: serverTimestamp(),
-      };
+      const { data, error } = await supabase
+        .from('carousels')
+        .insert({
+          title: formData.title,
+          description: formData.description,
+          layout_type: formData.layout_type,
+          user_id: user.uid,
+          published: false,
+        })
+        .select()
+        .single();
 
-      const newCarouselRef = await addDoc(carouselCollectionRef, carouselData);
+      if (error) {
+        throw error;
+      }
 
       toast({
         title: "Sucesso",
         description: "Carrossel criado com sucesso!",
       });
 
-      navigate(`/editor/${newCarouselRef.id}`);
+      navigate(`/editor/${data.id}`);
     } catch (error: any) {
+      console.error('[CreateCarousel] Erro ao criar carrossel:', error);
       toast({
         title: "Erro",
         description: error.message,
