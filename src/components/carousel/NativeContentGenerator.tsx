@@ -120,9 +120,17 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
     onApplyTexts(texts);
     
     toast({
-      title: "Conteúdo aplicado!",
-      description: slidesToApply.length + " slides foram aplicados ao carrossel."
+      title: "Conteúdo aplicado ao designer!",
+      description: slidesToApply.length + " slides foram aplicados e você será redirecionado para o designer."
     });
+
+    // Navegar automaticamente para a aba Design após aplicar
+    setTimeout(() => {
+      const designTab = document.querySelector('[value="design"]') as HTMLButtonElement;
+      if (designTab) {
+        designTab.click();
+      }
+    }, 500);
   };
 
   const selectedIntention = intentions.find(i => i.value === formData.intention);
@@ -334,7 +342,7 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
               className="w-full bg-gradient-to-r from-green-500 to-blue-500 hover:opacity-90 font-medium"
             >
               <Check className="mr-2 h-4 w-4" />
-              Aplicar Conteúdo ao Carrossel
+              Aplicar ao Designer
             </Button>
           </CardContent>
         </Card>

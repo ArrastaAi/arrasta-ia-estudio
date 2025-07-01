@@ -46,13 +46,7 @@ const ContentTab: React.FC<ContentTabProps> = ({
     
     setShowManualEditor(true);
     
-    // Trocar automaticamente para a aba Design após aplicar os textos
-    setTimeout(() => {
-      const designTab = document.querySelector('[value="design"]') as HTMLButtonElement;
-      if (designTab) {
-        designTab.click();
-      }
-    }, 500);
+    // Não navegar automaticamente aqui, será feito pelo NativeContentGenerator
   };
   
   return (
