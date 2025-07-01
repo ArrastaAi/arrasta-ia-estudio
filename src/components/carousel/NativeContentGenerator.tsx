@@ -42,8 +42,10 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
     logs, 
     slides, 
     error, 
+    canRetry,
     startStreaming, 
-    reset 
+    reset,
+    forceStop 
   } = useStreamingGeneration();
   
   const [formData, setFormData] = useState({
@@ -231,23 +233,54 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
             />
           </div>
 
-          <Button 
-            onClick={handleGenerate}
-            disabled={isStreaming || !formData.topic.trim()}
-            className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:opacity-90"
-          >
-            {isStreaming ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Agentes trabalhando...
-              </>
-            ) : (
-              <>
-                <Wand2 className="mr-2 h-4 w-4" />
-                Gerar com Agentes IA
-              </>
+          <div className="flex gap-2">
+            <Button 
+              onClick={handleGenerate}
+              disabled={isStreaming || !formData.topic.trim()}
+              className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:opacity-90"
+            >
+              {isStreaming ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Agentes trabalhando...
+                </>
+              ) : (
+                <>
+                  <Wand2 className="mr-2 h-4 w-4" />
+                  Gerar com Agentes IA
+                </>
+              )}
+            </Button>
+            
+            {isStreaming && (
+              <Button 
+                onClick={forceStop}
+                variant="destructive"
+                size="sm"
+                className="px-3"
+              >
+                🛑
+              </Button>
             )}
-          </Button>
+          </div>
+
+          {error && (
+            <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+              <div className="flex items-start gap-2">
+                <div className="text-red-400 text-sm">❌ {error}</div>
+              </div>
+              {canRetry && (
+                <Button 
+                  onClick={() => { reset(); handleGenerate(); }}
+                  variant="outline"
+                  size="sm"
+                  className="mt-2 border-red-500/30 text-red-300 hover:bg-red-500/10"
+                >
+                  Tentar Novamente
+                </Button>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -255,6 +288,7 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
         progress={progress}
         logs={logs}
         isStreaming={isStreaming}
+        error={error}
       />
 
       {(slides.length > 0 || generatedSlides.length > 0) && (

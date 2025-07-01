@@ -12,6 +12,7 @@ interface AgentProgressProps {
   } | null;
   logs: string[];
   isStreaming: boolean;
+  error?: string | null;
 }
 
 const agentConfig = {
@@ -44,17 +45,26 @@ const agentConfig = {
 const AgentProgressIndicator: React.FC<AgentProgressProps> = ({ 
   progress, 
   logs, 
-  isStreaming 
+  isStreaming,
+  error 
 }) => {
   const [savedLogs, setSavedLogs] = React.useState<string[]>([]);
+  const [hasBeenActive, setHasBeenActive] = React.useState(false);
   
   React.useEffect(() => {
     if (logs.length > 0) {
       setSavedLogs(logs);
     }
   }, [logs]);
+
+  React.useEffect(() => {
+    if (isStreaming || progress) {
+      setHasBeenActive(true);
+    }
+  }, [isStreaming, progress]);
   
-  if (!isStreaming && !progress && savedLogs.length === 0) return null;
+  // Mostrar apenas se teve atividade ou há erro
+  if (!hasBeenActive && !error) return null;
 
   const getAgentStatus = (agentType: string) => {
     if (!progress) return 'pending';
@@ -71,7 +81,10 @@ const AgentProgressIndicator: React.FC<AgentProgressProps> = ({
   };
 
   const shouldShowAgent = (agentType: string) => {
-    if (!progress) return false;
+    // Se há erro, mostrar todos os agentes em estado neutro
+    if (error) return true;
+    
+    if (!progress) return hasBeenActive;
     
     const stages = ['roteirista', 'copywriter', 'editor', 'supervisor'];
     const currentIndex = stages.indexOf(progress.stage);
@@ -85,23 +98,34 @@ const AgentProgressIndicator: React.FC<AgentProgressProps> = ({
     <Card className="bg-gray-800 border-gray-700">
       <CardContent className="p-4 space-y-4">
         <div className="flex justify-end">
-          {progress && (
+          {error ? (
+            <Badge variant="destructive" className="bg-red-500/20 text-red-300">
+              Erro
+            </Badge>
+          ) : progress ? (
             <Badge variant="secondary" className="bg-blue-500/20 text-blue-300">
               {progress.progress}%
             </Badge>
-          )}
+          ) : null}
         </div>
 
-        {progress && (
+        {error ? (
+          <div className="space-y-2">
+            <div className="h-2 w-full bg-red-500/20 rounded-full">
+              <div className="h-full bg-red-500 rounded-full" style={{ width: '100%' }}></div>
+            </div>
+            <p className="text-sm text-red-300">❌ {error}</p>
+          </div>
+        ) : progress ? (
           <div className="space-y-2">
             <Progress value={progress.progress} className="h-2" />
             <p className="text-sm text-gray-300">{progress.message}</p>
           </div>
-        )}
+        ) : null}
 
         <div className="grid grid-cols-2 gap-3">
           {Object.entries(agentConfig).map(([key, config], index) => {
-            const status = getAgentStatus(key);
+            const status = error ? 'error' : getAgentStatus(key);
             const shouldShow = shouldShowAgent(key);
             const IconComponent = config.icon;
             
@@ -111,7 +135,9 @@ const AgentProgressIndicator: React.FC<AgentProgressProps> = ({
               <div 
                 key={key}
                 className={`p-3 rounded-lg border-2 transition-all duration-500 animate-fade-in ${
-                  status === 'active' 
+                  status === 'error'
+                    ? 'border-red-500/50 bg-red-500/10'
+                    : status === 'active' 
                     ? 'border-blue-500 bg-blue-500/10 scale-105' 
                     : status === 'completed'
                     ? 'border-green-500 bg-green-500/10'
@@ -126,7 +152,9 @@ const AgentProgressIndicator: React.FC<AgentProgressProps> = ({
                   <div className={`p-2 rounded-full transition-all duration-300 ${config.color}/20 ${
                     status === 'active' ? 'scale-110' : ''
                   }`}>
-                    {status === 'active' ? (
+                    {status === 'error' ? (
+                      <IconComponent className="h-4 w-4 text-red-400" />
+                    ) : status === 'active' ? (
                       <Loader2 className="h-4 w-4 text-blue-400 animate-spin" />
                     ) : status === 'completed' ? (
                       <Check className="h-4 w-4 text-green-400 animate-scale-in" />
@@ -136,7 +164,8 @@ const AgentProgressIndicator: React.FC<AgentProgressProps> = ({
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm font-medium transition-colors duration-300 ${
-                      status === 'active' ? 'text-blue-300' 
+                      status === 'error' ? 'text-red-300'
+                      : status === 'active' ? 'text-blue-300' 
                       : status === 'completed' ? 'text-green-300'
                       : 'text-gray-400'
                     }`}>
