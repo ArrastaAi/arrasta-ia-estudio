@@ -1,3 +1,4 @@
+
 export type UserProfile = {
   id: string;
   username: string | null;
@@ -37,7 +38,7 @@ export type Slide = {
 
 export type Template = {
   id: string;
-  title: string;
+  name: string;
   category: string;
   subcategory: string | null;
   layout_type: string;
