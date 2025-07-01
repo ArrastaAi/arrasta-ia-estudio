@@ -11,9 +11,13 @@ import ImageGallery from "./ImageGallery";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { INSTAGRAM_COLORS } from "@/types/carousel.types";
+import { Slide } from "@/types/database.types";
+import CarouselPreview from "./CarouselPreview";
 
 interface DesignTabProps {
   carouselId: string;
+  slides?: Slide[];
+  layoutType?: string;
   onImagesUploaded: (imageUrls: string[]) => void;
   onSelectImage: (imageUrl: string, slideIndex: number) => void;
   onBackgroundColorChange?: (color: string) => void;
@@ -23,6 +27,8 @@ interface DesignTabProps {
 
 const DesignTab: React.FC<DesignTabProps> = ({
   carouselId,
+  slides = [],
+  layoutType = "instagram_rect",
   onImagesUploaded,
   onSelectImage,
   onBackgroundColorChange,
@@ -86,6 +92,18 @@ const DesignTab: React.FC<DesignTabProps> = ({
           <strong>Design simples:</strong> Faça upload de imagens e ajuste cores e tamanhos básicos.
         </AlertDescription>
       </Alert>
+
+      {/* Preview do Carrossel */}
+      {slides.length > 0 && slides.some(slide => slide.content && slide.content.trim() !== "") && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-medium text-white">Preview do Carrossel</h3>
+          <CarouselPreview 
+            slides={slides}
+            layoutType={layoutType}
+            textStyles={textStyles}
+          />
+        </div>
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid grid-cols-2 mb-4">

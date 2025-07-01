@@ -462,6 +462,8 @@ const Editor = () => {
                 <TabsContent value="design" className="mt-0">
                   <DesignTab 
                     carouselId={carouselData?.id || ""} 
+                    slides={carouselData?.slides || []}
+                    layoutType={carouselData?.layout_type || "instagram_rect"}
                     onImagesUploaded={handleImagesUploaded} 
                     onSelectImage={handleApplyImageToSlide} 
                     onBackgroundColorChange={handleBackgroundColorChange}
