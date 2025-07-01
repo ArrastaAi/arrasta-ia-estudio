@@ -44,7 +44,7 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
     error, 
     startStreaming, 
     reset 
-  } = useStreamingGeneration();
+  } = useStreamingGeneration(carouselId);
   
   const [formData, setFormData] = useState({
     topic: '',

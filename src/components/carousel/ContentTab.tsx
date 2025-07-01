@@ -4,9 +4,12 @@ import { Slide } from "@/types/database.types";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Info } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Info, Trash2, RotateCcw, Sparkles } from "lucide-react";
 import NativeContentGenerator from "./NativeContentGenerator";
 import { useToast } from '@/hooks/use-toast';
+import { useStreamingGeneration } from '@/hooks/useStreamingGeneration';
 
 interface ContentTabProps {
   carouselId: string;
@@ -22,10 +25,12 @@ const ContentTab: React.FC<ContentTabProps> = ({
   onUpdateSlideContent 
 }) => {
   const [showManualEditor, setShowManualEditor] = useState(false);
+  const [showConfirmNew, setShowConfirmNew] = useState(false);
   const { toast } = useToast();
+  const streamingData = useStreamingGeneration(carouselId);
   
   const MIN_SLIDES = 4;
-  const MAX_SLIDES = 12; // Atualizado para 12
+  const MAX_SLIDES = 12;
   
   const handleApplyTexts = (texts: { id: number; text: string }[]) => {
     if (texts.length < MIN_SLIDES) {
@@ -55,8 +60,106 @@ const ContentTab: React.FC<ContentTabProps> = ({
     }, 500);
   };
   
+  const handleClearAll = () => {
+    streamingData.clearAll();
+    setShowManualEditor(false);
+    setShowConfirmNew(false);
+    toast({
+      title: "Conteúdo limpo",
+      description: "Todo o conteúdo gerado foi removido."
+    });
+  };
+
+  const handleGenerateNew = () => {
+    if (streamingData.hasContent) {
+      setShowConfirmNew(true);
+    }
+  };
+
+  const confirmGenerateNew = () => {
+    streamingData.clearAll();
+    setShowConfirmNew(false);
+    setShowManualEditor(false);
+  };
+
+  // Aplicar conteúdo salvo automaticamente se existir e não houver slides
+  React.useEffect(() => {
+    if (streamingData.slides.length > 0 && slides.length === 0) {
+      const convertedTexts = streamingData.slides.map((slide, index) => ({
+        id: index + 1,
+        text: slide.title + (slide.subtitle ? `\n${slide.subtitle}` : '') + 
+              (slide.body.length > 0 ? `\n${slide.body.join('\n')}` : '')
+      }));
+      handleApplyTexts(convertedTexts);
+    }
+  }, [streamingData.slides]);
+
   return (
     <div className="space-y-6">
+      {/* Controles de Gerenciamento */}
+      {streamingData.hasContent && (
+        <Alert className="bg-blue-500/10 border-blue-500/20">
+          <Info className="h-4 w-4" />
+          <AlertDescription className="text-blue-300">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span>Conteúdo gerado encontrado</span>
+                <Badge variant="secondary" className="bg-green-500/20 text-green-300">
+                  {streamingData.slides.length} slides
+                </Badge>
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={handleClearAll}
+                  className="text-red-400 border-red-400/50 hover:bg-red-500/10"
+                >
+                  <Trash2 className="h-3 w-3 mr-1" />
+                  Limpar Tudo
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={handleGenerateNew}
+                  className="text-blue-400 border-blue-400/50 hover:bg-blue-500/10"
+                >
+                  <Sparkles className="h-3 w-3 mr-1" />
+                  Gerar Novo
+                </Button>
+              </div>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Modal de Confirmação */}
+      {showConfirmNew && (
+        <Alert className="bg-yellow-500/10 border-yellow-500/20">
+          <RotateCcw className="h-4 w-4" />
+          <AlertDescription className="text-yellow-300">
+            <div className="space-y-3">
+              <p>Deseja gerar novo conteúdo? O conteúdo atual será substituído.</p>
+              <div className="flex gap-2">
+                <Button 
+                  size="sm" 
+                  onClick={confirmGenerateNew}
+                  className="bg-yellow-500 hover:bg-yellow-600 text-black"
+                >
+                  Sim, gerar novo
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => setShowConfirmNew(false)}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
       
       <NativeContentGenerator 
         carouselId={carouselId} 
