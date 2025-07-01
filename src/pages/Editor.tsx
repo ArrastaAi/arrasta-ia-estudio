@@ -125,7 +125,10 @@ const Editor = () => {
             has_image: !!slide.image_url
           });
           
-          return slide as Slide;
+          return {
+            ...slide,
+            effects: (slide.effects as Record<string, any>) || {}
+          } as Slide;
         });
 
         setCarouselData({
@@ -370,7 +373,13 @@ const Editor = () => {
           .single();
 
         if (error) throw error;
-        updatedSlides.push(insertedSlide);
+        
+        const slideWithCorrectTypes: Slide = {
+          ...insertedSlide,
+          effects: (insertedSlide.effects as Record<string, any>) || {}
+        };
+        
+        updatedSlides.push(slideWithCorrectTypes);
       }
 
       for (let i = 0; i < texts.length; i++) {
@@ -547,7 +556,13 @@ const Editor = () => {
             .single();
 
           if (error) throw error;
-          currentSlides.push(insertedSlide);
+          
+          const slideWithCorrectTypes: Slide = {
+            ...insertedSlide,
+            effects: (insertedSlide.effects as Record<string, any>) || {}
+          };
+          
+          currentSlides.push(slideWithCorrectTypes);
         }
       } else if (validCount < currentSlides.length) {
         currentSlides.splice(validCount);
