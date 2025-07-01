@@ -262,6 +262,74 @@ async function generateWithAgentPipeline(request: GenerationRequest): Promise<Ge
   }
 }
 
+async function generateWithStreamingPipeline(request: GenerationRequest, controller: ReadableStreamDefaultController) {
+  const sendEvent = (type: string, data: any) => {
+    const event = `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`;
+    controller.enqueue(new TextEncoder().encode(event));
+  };
+
+  try {
+    sendEvent('progress', { stage: 'roteirista', message: '🎬 Iniciando agente ROTEIRISTA...', progress: 10 });
+    
+    const roteiristaResult = await callGeminiAgent('roteirista', '', request);
+    sendEvent('progress', { stage: 'roteirista', message: '✅ Roteirista concluído', progress: 25 });
+
+    sendEvent('progress', { stage: 'copywriter', message: '✍️ Iniciando agente COPYWRITER...', progress: 30 });
+    const copywriterResult = await callGeminiAgent('copywriter', JSON.stringify(roteiristaResult), request);
+    sendEvent('progress', { stage: 'copywriter', message: '✅ Copywriter concluído', progress: 50 });
+
+    sendEvent('progress', { stage: 'editor', message: '📝 Iniciando agente EDITOR...', progress: 55 });
+    const editorResult = await callGeminiAgent('editor', JSON.stringify(copywriterResult), request);
+    sendEvent('progress', { stage: 'editor', message: '✅ Editor concluído', progress: 75 });
+
+    sendEvent('progress', { stage: 'supervisor', message: '🔍 Iniciando agente SUPERVISOR...', progress: 80 });
+    const supervisorResult = await callGeminiAgent('supervisor', JSON.stringify(editorResult), request);
+    sendEvent('progress', { stage: 'supervisor', message: '✅ Supervisor concluído', progress: 90 });
+
+    // Processar resultado final
+    const slides = supervisorResult.slides || [];
+    const targetSlides = Math.max(Math.min(request.slideCount, 12), 4);
+    
+    if (slides.length < targetSlides) {
+      for (let i = slides.length; i < targetSlides; i++) {
+        slides.push({
+          title: `SLIDE ${i + 1}`,
+          subtitle: `Conteúdo sobre ${request.topic}`,
+          body: [`Ponto ${i + 1} sobre o tema`, "Desenvolva este tópico", "Conecte com o próximo slide"]
+        });
+      }
+    } else if (slides.length > targetSlides) {
+      slides.splice(targetSlides);
+    }
+
+    if (slides.length > 0) {
+      const lastSlide = slides[slides.length - 1];
+      if (!lastSlide.body.some(line => line.toLowerCase().includes('acesse') || 
+                                     line.toLowerCase().includes('clique') ||
+                                     line.toLowerCase().includes('saiba mais') ||
+                                     line.toLowerCase().includes('confira'))) {
+        lastSlide.body.push("👆 Acesse o link para saber mais!");
+      }
+    }
+
+    sendEvent('complete', {
+      success: true,
+      slides,
+      progress: 100,
+      message: `🎯 Pipeline concluído: ${slides.length} slides gerados`
+    });
+
+  } catch (error) {
+    sendEvent('error', {
+      success: false,
+      error: error.message,
+      message: `❌ Erro no pipeline: ${error.message}`
+    });
+  } finally {
+    controller.close();
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -269,12 +337,15 @@ serve(async (req) => {
   }
 
   try {
+    const url = new URL(req.url);
+    const isStreaming = url.searchParams.get('stream') === 'true';
     const request: GenerationRequest = await req.json();
     
     console.log('📥 Nova solicitação de geração:', {
       topic: request.topic,
       slideCount: request.slideCount,
-      intention: request.intention
+      intention: request.intention,
+      streaming: isStreaming
     });
 
     // Validação básica
@@ -282,18 +353,36 @@ serve(async (req) => {
       throw new Error('Tema é obrigatório');
     }
 
-    // Executar pipeline de agentes
-    const result = await generateWithAgentPipeline(request);
-    
-    console.log('📤 Resultado da geração:', {
-      success: result.success,
-      slidesCount: result.slides?.length || 0,
-      logs: result.agent_logs?.length || 0
-    });
+    if (isStreaming) {
+      // Implementar streaming SSE
+      const stream = new ReadableStream({
+        start(controller) {
+          generateWithStreamingPipeline(request, controller);
+        }
+      });
 
-    return new Response(JSON.stringify(result), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+      return new Response(stream, {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
+      });
+    } else {
+      // Executar pipeline normal
+      const result = await generateWithAgentPipeline(request);
+      
+      console.log('📤 Resultado da geração:', {
+        success: result.success,
+        slidesCount: result.slides?.length || 0,
+        logs: result.agent_logs?.length || 0
+      });
+
+      return new Response(JSON.stringify(result), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
   } catch (error: any) {
     console.error('❌ Erro na função generate-carousel-content:', error);

@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Wand2, Check, Edit3, Users, Target, BookOpen, Settings } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useStreamingGeneration } from '@/hooks/useStreamingGeneration';
+import AgentProgressIndicator from './AgentProgressIndicator';
 
 interface SlideContent {
   title: string;
@@ -32,10 +34,17 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
 }) => {
   const { toast } = useToast();
   const { user } = useAuth();
-  const [loading, setLoading] = useState(false);
   const [generatedSlides, setGeneratedSlides] = useState<SlideContent[]>([]);
   const [isEditing, setIsEditing] = useState(false);
-  const [agentLogs, setAgentLogs] = useState<string[]>([]);
+  const { 
+    isStreaming, 
+    progress, 
+    logs, 
+    slides, 
+    error, 
+    startStreaming, 
+    reset 
+  } = useStreamingGeneration();
   
   const [formData, setFormData] = useState({
     topic: '',
@@ -91,88 +100,29 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
       return;
     }
 
-    setLoading(true);
-    setAgentLogs([]);
+    reset();
+    setGeneratedSlides([]);
     
-    try {
-      console.log('Iniciando geracao nativa com agentes...', formData);
-
-      const response = await fetch('https://kjoevpxfgujzaekqfzyn.supabase.co/functions/v1/generate-carousel-content', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtqb2V2cHhmZ3VqemFla3FmenluIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc3MzcxMjcsImV4cCI6MjA2MzMxMzEyN30.L945UdIgiGCowU3ueQNt-Wr8KhdZb6yPNZ4mG9X6L40`
-        },
-        body: JSON.stringify({
-          topic: formData.topic,
-          audience: formData.audience,
-          intention: formData.intention,
-          slideCount: formData.slideCount,
-          context: formData.context
-        })
-      });
-
-      console.log('Resposta da Edge Function - Status:', response.status);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Erro da Edge Function:', errorText);
-        throw new Error('Erro na geracao: ' + response.status + ' - ' + errorText);
-      }
-
-      const data = await response.json();
-      console.log('Dados recebidos:', data);
-
-      if (data.success && data.slides && Array.isArray(data.slides)) {
-        console.log(data.slides.length + ' slides gerados com sucesso');
-        setGeneratedSlides(data.slides);
-        setAgentLogs(data.agent_logs || []);
-        setIsEditing(false);
-        
-        toast({
-          title: "Conteúdo gerado com sucesso!",
-          description: data.slides.length + " slides foram criados pelos agentes especializados."
-        });
-      } else {
-        console.error('Dados invalidos recebidos:', data);
-        throw new Error(data.error || "Erro ao processar resposta da geração");
-      }
-
-    } catch (error: any) {
-      console.error('Erro completo ao gerar conteudo:', error);
-      
-      let errorMessage = "Houve um problema na geracao. Tente novamente.";
-      
-      if (error.message.includes('404')) {
-        errorMessage = "Servico de geracao indisponivel. Verifique a configuracao.";
-      } else if (error.message.includes('500')) {
-        errorMessage = "Erro interno do servidor. Tente novamente em alguns minutos.";
-      } else if (error.message.includes('fetch')) {
-        errorMessage = "Problema de conectividade. Verifique sua conexao.";
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
-      toast({
-        title: "Erro ao gerar conteudo",
-        description: errorMessage,
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
+    await startStreaming({
+      topic: formData.topic,
+      audience: formData.audience,
+      intention: formData.intention,
+      slideCount: formData.slideCount,
+      context: formData.context
+    });
   };
 
   const handleApplyContent = () => {
-    if (generatedSlides.length === 0) return;
+    const slidesToApply = slides.length > 0 ? slides : generatedSlides;
+    if (slidesToApply.length === 0) return;
     
-    const texts = convertSlidesToTexts(generatedSlides);
+    const texts = convertSlidesToTexts(slidesToApply);
     onApplyTexts(texts);
     
-      toast({
-        title: "Conteúdo aplicado!",
-        description: generatedSlides.length + " slides foram aplicados ao carrossel."
-      });
+    toast({
+      title: "Conteúdo aplicado!",
+      description: slidesToApply.length + " slides foram aplicados ao carrossel."
+    });
   };
 
   const selectedIntention = intentions.find(i => i.value === formData.intention);
@@ -275,10 +225,10 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
 
           <Button 
             onClick={handleGenerate}
-            disabled={loading || !formData.topic.trim()}
+            disabled={isStreaming || !formData.topic.trim()}
             className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:opacity-90"
           >
-            {loading ? (
+            {isStreaming ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Agentes trabalhando...
@@ -293,30 +243,19 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
         </CardContent>
       </Card>
 
-      {agentLogs.length > 0 && (
-        <Card className="bg-gray-800 border-gray-700">
-          <CardHeader>
-            <CardTitle className="text-white text-sm">🔍 Log dos Agentes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-1">
-              {agentLogs.map((log, index) => (
-                <div key={index} className="text-xs text-gray-400 font-mono">
-                  {log}
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <AgentProgressIndicator 
+        progress={progress}
+        logs={logs}
+        isStreaming={isStreaming}
+      />
 
-      {generatedSlides.length > 0 && (
+      {(slides.length > 0 || generatedSlides.length > 0) && (
         <Card className="bg-gray-800 border-gray-700">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-white flex items-center gap-2">
                 <Edit3 className="h-5 w-5" />
-                Conteúdo Gerado ({generatedSlides.length} slides)
+                Conteúdo Gerado ({(slides.length > 0 ? slides : generatedSlides).length} slides)
                 {selectedIntention && (
                   <Badge variant="secondary" className={`ml-2 ${selectedIntention.color} text-white`}>
                     {selectedIntention.label}
@@ -339,7 +278,7 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
           
           <CardContent className="space-y-4">
             <div className="space-y-3 max-h-96 overflow-y-auto">
-              {generatedSlides.map((slide, index) => (
+              {(slides.length > 0 ? slides : generatedSlides).map((slide, index) => (
                 <div key={index} className="p-4 bg-gray-700 rounded-lg border-l-4 border-purple-500">
                   <div className="flex justify-between items-start mb-2">
                     <Label className="text-purple-400 font-medium text-sm">
