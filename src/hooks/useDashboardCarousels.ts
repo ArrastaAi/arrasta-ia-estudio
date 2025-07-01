@@ -36,7 +36,9 @@ export const useDashboardCarousels = () => {
 
       const carouselsList: Carousel[] = (data || []).map(carousel => ({
         ...carousel,
-        layout_type: carousel.layout_type || "instagram_rect",
+        layout_type: (['instagram_rect', 'feed_square', 'stories', 'pinterest', 'facebook', 'youtube'].includes(carousel.layout_type)) 
+          ? carousel.layout_type as Carousel['layout_type']
+          : "instagram_rect",
       }));
 
       console.log('[Dashboard] Carrosséis carregados:', carouselsList.length);
