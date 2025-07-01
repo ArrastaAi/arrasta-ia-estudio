@@ -10,7 +10,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { Slide } from "@/types/database.types";
 import { supabase } from "@/integrations/supabase/client";
-import CarouselPreview from "@/components/carousel/CarouselPreview";
 import ContentTab from "@/components/carousel/ContentTab";
 import DesignTab from "@/components/carousel/DesignTab";
 import ExportTab from "@/components/carousel/ExportTab";
@@ -37,7 +36,7 @@ const Editor = () => {
   const [activeTab, setActiveTab] = useState("content");
 
   const MIN_SLIDES = 4;
-  const MAX_SLIDES = 12; // Atualizado para 12
+  const MAX_SLIDES = 12;
 
   const [textStyles, setTextStyles] = useState<TextStyleOptions>({
     textSize: "medium",
@@ -392,8 +391,7 @@ const Editor = () => {
   return (
     <MainLayout>
       <div className="min-h-screen bg-gray-900 py-6">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          {/* Header Simplificado */}
+        <div className="max-w-4xl mx-auto px-4 sm:px-6">
           <div className="flex justify-between items-center mb-6">
             <div className="flex items-center">
               <Button 
@@ -451,43 +449,31 @@ const Editor = () => {
               </TabsList>
             </div>
 
-            <div className="grid grid-cols-12 gap-6">
-              <div className="col-span-12 lg:col-span-7">
-                <CarouselPreview 
-                  slides={carouselData?.slides || []} 
-                  layoutType={carouselData?.layout_type || "instagram_rect"} 
-                  textStyles={textStyles} 
-                />
+            <Card className="bg-gray-800 border-gray-700">
+              <div className="p-6">
+                <TabsContent value="content" className="mt-0">
+                  <ContentTab 
+                    carouselId={carouselData?.id || ""} 
+                    slides={carouselData?.slides || []} 
+                    onApplyGeneratedTexts={handleApplyGeneratedTexts} 
+                    onUpdateSlideContent={handleUpdateSlideContent} 
+                  />
+                </TabsContent>
+                <TabsContent value="design" className="mt-0">
+                  <DesignTab 
+                    carouselId={carouselData?.id || ""} 
+                    onImagesUploaded={handleImagesUploaded} 
+                    onSelectImage={handleApplyImageToSlide} 
+                    onBackgroundColorChange={handleBackgroundColorChange}
+                    textStyles={textStyles}
+                    onUpdateTextStyles={handleUpdateTextStyles}
+                  />
+                </TabsContent>
+                <TabsContent value="export" className="mt-0">
+                  <ExportTab carouselTitle={carouselData?.title} />
+                </TabsContent>
               </div>
-
-              <div className="col-span-12 lg:col-span-5">
-                <Card className="bg-gray-800 border-gray-700">
-                  <div className="p-6">
-                    <TabsContent value="content" className="mt-0">
-                      <ContentTab 
-                        carouselId={carouselData?.id || ""} 
-                        slides={carouselData?.slides || []} 
-                        onApplyGeneratedTexts={handleApplyGeneratedTexts} 
-                        onUpdateSlideContent={handleUpdateSlideContent} 
-                      />
-                    </TabsContent>
-                    <TabsContent value="design" className="mt-0">
-                      <DesignTab 
-                        carouselId={carouselData?.id || ""} 
-                        onImagesUploaded={handleImagesUploaded} 
-                        onSelectImage={handleApplyImageToSlide} 
-                        onBackgroundColorChange={handleBackgroundColorChange}
-                        textStyles={textStyles}
-                        onUpdateTextStyles={handleUpdateTextStyles}
-                      />
-                    </TabsContent>
-                    <TabsContent value="export" className="mt-0">
-                      <ExportTab carouselTitle={carouselData?.title} />
-                    </TabsContent>
-                  </div>
-                </Card>
-              </div>
-            </div>
+            </Card>
           </Tabs>
         </div>
       </div>
