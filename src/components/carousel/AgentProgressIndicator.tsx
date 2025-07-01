@@ -46,7 +46,15 @@ const AgentProgressIndicator: React.FC<AgentProgressProps> = ({
   logs, 
   isStreaming 
 }) => {
-  if (!isStreaming && !progress) return null;
+  const [savedLogs, setSavedLogs] = React.useState<string[]>([]);
+  
+  React.useEffect(() => {
+    if (logs.length > 0) {
+      setSavedLogs(logs);
+    }
+  }, [logs]);
+  
+  if (!isStreaming && !progress && savedLogs.length === 0) return null;
 
   const getAgentStatus = (agentType: string) => {
     if (!progress) return 'pending';
@@ -62,11 +70,21 @@ const AgentProgressIndicator: React.FC<AgentProgressProps> = ({
     return agentIndex < currentIndex ? 'completed' : 'pending';
   };
 
+  const shouldShowAgent = (agentType: string) => {
+    if (!progress) return false;
+    
+    const stages = ['roteirista', 'copywriter', 'editor', 'supervisor'];
+    const currentIndex = stages.indexOf(progress.stage);
+    const agentIndex = stages.indexOf(agentType);
+    
+    // Mostrar agentes até o atual + próximo
+    return agentIndex <= currentIndex + 1;
+  };
+
   return (
     <Card className="bg-gray-800 border-gray-700">
       <CardContent className="p-4 space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-white font-medium">Pipeline de Agentes IA</h3>
+        <div className="flex justify-end">
           {progress && (
             <Badge variant="secondary" className="bg-blue-500/20 text-blue-300">
               {progress.progress}%
@@ -84,7 +102,10 @@ const AgentProgressIndicator: React.FC<AgentProgressProps> = ({
         <div className="grid grid-cols-2 gap-3">
           {Object.entries(agentConfig).map(([key, config], index) => {
             const status = getAgentStatus(key);
+            const shouldShow = shouldShowAgent(key);
             const IconComponent = config.icon;
+            
+            if (!shouldShow) return null;
             
             return (
               <div 
@@ -131,25 +152,30 @@ const AgentProgressIndicator: React.FC<AgentProgressProps> = ({
           })}
         </div>
 
-        {isStreaming && (
+        {(isStreaming || savedLogs.length > 0) && (
           <div className="space-y-1 max-h-40 overflow-y-auto scroll-smooth" id="logs-container">
             <div className="flex items-center gap-2">
               <h4 className="text-xs text-gray-400 font-medium">Logs em tempo real:</h4>
-              {logs.length === 0 && (
+              {isStreaming && logs.length === 0 && (
                 <div className="flex items-center gap-1">
                   <div className="w-1 h-1 bg-blue-400 rounded-full animate-pulse"></div>
                   <div className="w-1 h-1 bg-blue-400 rounded-full animate-pulse delay-75"></div>
                   <div className="w-1 h-1 bg-blue-400 rounded-full animate-pulse delay-150"></div>
                 </div>
               )}
+              {!isStreaming && savedLogs.length > 0 && (
+                <Badge variant="secondary" className="bg-green-500/20 text-green-300 text-xs">
+                  Concluído
+                </Badge>
+              )}
             </div>
-            {logs.length === 0 ? (
+            {logs.length === 0 && savedLogs.length === 0 ? (
               <div className="text-xs text-gray-500 font-mono italic opacity-70 animate-pulse">
                 Aguardando inicialização dos agentes...
               </div>
             ) : (
               <div className="space-y-1">
-                {logs.slice(-10).map((log, index) => (
+                {(logs.length > 0 ? logs : savedLogs).slice(-10).map((log, index) => (
                   <div 
                     key={index} 
                     className="text-xs text-gray-400 font-mono leading-relaxed animate-in fade-in duration-300 slide-in-from-left-2"

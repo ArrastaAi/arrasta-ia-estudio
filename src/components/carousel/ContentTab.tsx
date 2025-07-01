@@ -36,21 +36,9 @@ const ContentTab: React.FC<ContentTabProps> = ({
           text: `Slide ${i + 1} - Conteúdo a ser definido`
         });
       }
-      
-      toast({
-        title: "Slides completados",
-        description: `Adicionados slides vazios para atingir o mínimo de ${MIN_SLIDES} slides.`,
-      });
-      
       onApplyGeneratedTexts(completeTexts);
     } else if (texts.length > MAX_SLIDES) {
       const limitedTexts = texts.slice(0, MAX_SLIDES);
-      
-      toast({
-        title: "Limite de slides",
-        description: `O número máximo de slides foi limitado a ${MAX_SLIDES}.`,
-      });
-      
       onApplyGeneratedTexts(limitedTexts);
     } else {
       onApplyGeneratedTexts(texts);
