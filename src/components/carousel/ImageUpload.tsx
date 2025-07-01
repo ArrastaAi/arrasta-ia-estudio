@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from "react";
-import { useFirebaseAuth } from "@/contexts/FirebaseAuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { useFirebaseStorage } from "@/hooks/useFirebaseStorage";
+import { supabase } from "@/integrations/supabase/client";
 import ImageUploadArea from "./ImageUploadArea";
 import ImagePreviewGrid from "./ImagePreviewGrid";
 import ImageUploadButton from "./ImageUploadButton";
@@ -14,14 +14,10 @@ interface ImageUploadProps {
 
 const ImageUpload: React.FC<ImageUploadProps> = ({ carouselId, onImagesUploaded }) => {
   const [previewImages, setPreviewImages] = useState<{ url: string; file: File }[]>([]);
+  const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
-  const { user } = useFirebaseAuth();
+  const { user } = useAuth();
   const MAX_IMAGES = 20;
-  
-  const { uploading, uploadImagesToFirebase } = useFirebaseStorage({
-    userId: user?.uid,
-    carouselId
-  });
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -29,14 +25,12 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ carouselId, onImagesUploaded 
     
     const selectedFiles = Array.from(files);
     
-    // Check only the image quantity limit
     if (previewImages.length + selectedFiles.length > MAX_IMAGES) {
       toast({
         title: "Limite de imagens",
         description: `Você pode carregar no máximo ${MAX_IMAGES} imagens. Selecionando apenas as primeiras.`,
         variant: "destructive"
       });
-      // Select only the images that fit in the limit
       const availableSlots = MAX_IMAGES - previewImages.length;
       const filesToAdd = selectedFiles.slice(0, availableSlots);
       
@@ -49,7 +43,6 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ carouselId, onImagesUploaded 
       return;
     }
     
-    // Create previews for the selected images
     const newPreviews = selectedFiles.map(file => ({
       url: URL.createObjectURL(file),
       file
@@ -60,7 +53,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ carouselId, onImagesUploaded 
   
   const removeImage = (index: number) => {
     const updatedImages = [...previewImages];
-    URL.revokeObjectURL(updatedImages[index].url); // Clean up URL
+    URL.revokeObjectURL(updatedImages[index].url);
     updatedImages.splice(index, 1);
     setPreviewImages(updatedImages);
   };
@@ -68,7 +61,6 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ carouselId, onImagesUploaded 
   const uploadImages = async () => {
     if (previewImages.length === 0) return;
     
-    // Check if user is authenticated
     if (!user) {
       toast({
         title: "Erro",
@@ -78,11 +70,47 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ carouselId, onImagesUploaded 
       return;
     }
     
-    const uploadedUrls = await uploadImagesToFirebase(previewImages);
-    
-    // Send URLs to parent component
-    if (uploadedUrls.length > 0) {
-      onImagesUploaded(uploadedUrls);
+    try {
+      setUploading(true);
+      const uploadedUrls: string[] = [];
+      
+      for (const preview of previewImages) {
+        const fileName = `${user.id}/${carouselId}/${Date.now()}-${preview.file.name}`;
+        
+        const { data, error } = await supabase.storage
+          .from('carousel-images')
+          .upload(fileName, preview.file);
+        
+        if (error) {
+          console.error('Upload error:', error);
+          throw error;
+        }
+        
+        const { data: { publicUrl } } = supabase.storage
+          .from('carousel-images')
+          .getPublicUrl(fileName);
+        
+        uploadedUrls.push(publicUrl);
+      }
+      
+      if (uploadedUrls.length > 0) {
+        onImagesUploaded(uploadedUrls);
+        setPreviewImages([]);
+        
+        toast({
+          title: "Upload concluído",
+          description: `${uploadedUrls.length} ${uploadedUrls.length === 1 ? 'imagem enviada' : 'imagens enviadas'} com sucesso!`
+        });
+      }
+    } catch (error) {
+      console.error("Erro no upload:", error);
+      toast({
+        title: "Erro no upload",
+        description: "Não foi possível enviar as imagens. Tente novamente.",
+        variant: "destructive"
+      });
+    } finally {
+      setUploading(false);
     }
   };
   

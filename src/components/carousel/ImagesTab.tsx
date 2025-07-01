@@ -9,9 +9,8 @@ import { Layers, Sparkles, Info } from "lucide-react";
 import ImageUpload from "./ImageUpload";
 import ImageGallery from "./ImageGallery";
 import { useToast } from "@/hooks/use-toast";
-import { useFirebaseAuth } from "@/contexts/FirebaseAuthContext";
-import { db } from "@/integrations/firebase/client";
-import { doc, getDoc, collection, query, getDocs, updateDoc } from "firebase/firestore";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ImagesTabProps {
   carouselId: string;
@@ -29,12 +28,12 @@ const ImagesTab: React.FC<ImagesTabProps> = ({
   onSlideCountChange
 }) => {
   const [activeTab, setActiveTab] = useState<string>("upload");
-  const [slideCount, setSlideCount] = useState<number>(4); // Mínimo padrão de 4
+  const [slideCount, setSlideCount] = useState<number>(4);
   const [backgroundColor, setBackgroundColor] = useState<string>("#000000");
   const [mlAnalysisEnabled, setMlAnalysisEnabled] = useState<boolean>(true);
   const [loading, setLoading] = useState<boolean>(false);
   const { toast } = useToast();
-  const { user } = useFirebaseAuth();
+  const { user } = useAuth();
 
   const MIN_SLIDES = 4;
   const MAX_SLIDES = 9;
@@ -46,33 +45,30 @@ const ImagesTab: React.FC<ImagesTabProps> = ({
       try {
         setLoading(true);
 
-        const carouselRef = doc(db, "carousels", carouselId);
-        const carouselSnap = await getDoc(carouselRef);
+        const { data: carouselData, error: carouselError } = await supabase
+          .from('carousels')
+          .select('*')
+          .eq('id', carouselId)
+          .single();
 
-        if (!carouselSnap.exists()) {
+        if (carouselError || !carouselData) {
           console.log("Carrossel não encontrado");
           return;
         }
 
-        const slidesCollectionRef = collection(db, "carousels", carouselId, "slides");
-        const slidesQuery = query(slidesCollectionRef);
-        const slidesSnap = await getDocs(slidesQuery);
+        const { data: slidesData, error: slidesError } = await supabase
+          .from('slides')
+          .select('*')
+          .eq('carousel_id', carouselId);
 
-        const slides: any[] = [];
-        slidesSnap.forEach(doc => {
-          slides.push(doc.data());
-        });
-
-        if (slides.length > 0) {
-          // Garantir que sempre respeitamos os limites
-          const currentSlideCount = Math.max(MIN_SLIDES, Math.min(slides.length, MAX_SLIDES));
+        if (!slidesError && slidesData) {
+          const currentSlideCount = Math.max(MIN_SLIDES, Math.min(slidesData.length, MAX_SLIDES));
           setSlideCount(currentSlideCount);
 
-          if (slides[0] && slides[0].background_value) {
-            setBackgroundColor(slides[0].background_value);
+          if (slidesData[0] && slidesData[0].background_value) {
+            setBackgroundColor(slidesData[0].background_value);
           }
         } else {
-          // Se não há slides, definir o mínimo
           setSlideCount(MIN_SLIDES);
         }
       } catch (error) {
@@ -239,7 +235,7 @@ const ImagesTab: React.FC<ImagesTabProps> = ({
                 />
                 <Label htmlFor="mlAnalysis" className="text-sm text-gray-300 flex items-center">
                   <Sparkles className="w-4 h-4 mr-1" />
-                  Análise automática com IA (Firebase ML Kit)
+                  Análise automática com IA (Supabase AI)
                 </Label>
               </div>
               

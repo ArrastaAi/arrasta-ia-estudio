@@ -7,10 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Save, TextSelect, Image, LayoutTemplate, Palette, Share, FileText, Download, MessageCircle, Instagram, Facebook, Linkedin, Twitter, Bug, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useFirebaseAuth } from "@/contexts/FirebaseAuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { Slide } from "@/types/database.types";
-import { db } from "@/integrations/firebase/client";
-import { doc, getDoc, collection, query, orderBy, getDocs, setDoc, updateDoc, addDoc } from "firebase/firestore";
+import { supabase } from "@/integrations/supabase/client";
 import CarouselPreview from "@/components/carousel/CarouselPreview";
 import ContentTab from "@/components/carousel/ContentTab";
 import ImagesTab from "@/components/carousel/ImagesTab";
@@ -36,7 +35,7 @@ const Editor = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user } = useFirebaseAuth();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [carouselData, setCarouselData] = useState<CarouselData | null>(null);
@@ -80,20 +79,23 @@ const Editor = () => {
         setLoading(true);
         console.log('[Editor] Iniciando carregamento do carrossel:', {
           carousel_id: id,
-          user_id: user.uid,
+          user_id: user.id,
           timestamp: new Date().toISOString()
         });
 
-        const carouselDocRef = doc(db, "carousels", id);
-        const carouselDocSnap = await getDoc(carouselDocRef);
+        const { data: carouselData, error: carouselError } = await supabase
+          .from('carousels')
+          .select('*')
+          .eq('id', id)
+          .single();
 
         console.log('[Editor] Resultado da busca do carrossel:', {
-          exists: carouselDocSnap.exists(),
-          id: carouselDocSnap.id,
-          has_data: !!carouselDocSnap.data()
+          exists: !!carouselData,
+          id: carouselData?.id,
+          has_data: !!carouselData
         });
 
-        if (!carouselDocSnap.exists()) {
+        if (carouselError || !carouselData) {
           console.log('[Editor] Carrossel não encontrado');
           toast({
             title: "Carrossel não encontrado",
@@ -104,52 +106,43 @@ const Editor = () => {
           return;
         }
 
-        const carouselData = carouselDocSnap.data() as CarouselData;
-        console.log('[Editor] Dados do carrossel carregados:', {
-          title: carouselData.title,
-          layout_type: carouselData.layout_type,
-          has_content: !!carouselData.content
-        });
-
-        const slidesCollectionRef = collection(db, "carousels", id, "slides");
-        const slidesQuery = query(slidesCollectionRef, orderBy("order_index", "asc"));
-        const slidesQuerySnapshot = await getDocs(slidesQuery);
+        const { data: slidesData, error: slidesError } = await supabase
+          .from('slides')
+          .select('*')
+          .eq('carousel_id', id)
+          .order('order_index', { ascending: true });
 
         console.log('[Editor] Resultado da busca de slides:', {
-          slides_count: slidesQuerySnapshot.docs.length,
-          empty: slidesQuerySnapshot.empty
+          slides_count: slidesData?.length || 0,
+          error: !!slidesError
         });
 
-        const slidesData: Slide[] = slidesQuerySnapshot.docs.map(doc => {
-          const slideData = doc.data();
+        const slides: Slide[] = (slidesData || []).map(slide => {
           console.log('[Editor] Slide carregado:', {
-            id: doc.id,
-            order_index: slideData.order_index,
-            has_content: !!slideData.content,
-            has_image: !!slideData.image_url
+            id: slide.id,
+            order_index: slide.order_index,
+            has_content: !!slide.content,
+            has_image: !!slide.image_url
           });
           
-          return {
-            id: doc.id,
-            ...slideData
-          } as Slide;
+          return slide as Slide;
         });
 
         setCarouselData({
           id,
           ...carouselData,
-          slides: slidesData
+          slides: slides
         });
 
         setDebugInfo({
           carousel_id: id,
-          slides_count: slidesData.length,
+          slides_count: slides.length,
           load_success: true,
           loaded_at: new Date().toISOString()
         });
 
         console.log('[Editor] Carrossel carregado com sucesso:', {
-          slides_count: slidesData.length,
+          slides_count: slides.length,
           title: carouselData.title
         });
 
@@ -159,7 +152,7 @@ const Editor = () => {
           message: error?.message,
           code: error?.code,
           carousel_id: id,
-          user_id: user.uid
+          user_id: user.id
         });
 
         setDebugInfo({
@@ -191,7 +184,6 @@ const Editor = () => {
       return;
     }
     
-    // Validar número mínimo de slides antes de salvar
     if (carouselData.slides.length < MIN_SLIDES) {
       toast({
         title: "Slides insuficientes",
@@ -209,13 +201,10 @@ const Editor = () => {
         timestamp: new Date().toISOString()
       });
       
-      // Salvar carrossel principal - filtrar campos undefined
-      const carouselRef = doc(db, "carousels", carouselData.id);
       const carouselUpdateData: any = {
         updated_at: new Date().toISOString()
       };
 
-      // Adicionar apenas campos que não são undefined
       if (carouselData.title !== undefined) {
         carouselUpdateData.title = carouselData.title;
       }
@@ -233,18 +222,20 @@ const Editor = () => {
       }
 
       console.log('[Editor] Salvando dados do carrossel:', carouselUpdateData);
-      await updateDoc(carouselRef, carouselUpdateData);
+      const { error: carouselError } = await supabase
+        .from('carousels')
+        .update(carouselUpdateData)
+        .eq('id', carouselData.id);
 
-      // Salvar slides - também filtrar campos undefined
+      if (carouselError) throw carouselError;
+
       let slidesUpdated = 0;
       for (const slide of carouselData.slides) {
         try {
-          const slideRef = doc(db, "carousels", carouselData.id, "slides", slide.id);
           const slideUpdateData: any = {
             updated_at: new Date().toISOString()
           };
 
-          // Adicionar apenas campos que não são undefined
           if (slide.content !== undefined) {
             slideUpdateData.content = slide.content;
           }
@@ -267,7 +258,12 @@ const Editor = () => {
             fields_to_update: Object.keys(slideUpdateData)
           });
 
-          await updateDoc(slideRef, slideUpdateData);
+          const { error: slideError } = await supabase
+            .from('slides')
+            .update(slideUpdateData)
+            .eq('id', slide.id);
+
+          if (slideError) throw slideError;
           slidesUpdated++;
         } catch (slideError) {
           console.error('[Editor] Erro ao salvar slide:', {
@@ -330,13 +326,16 @@ const Editor = () => {
         slides: updatedSlides
       });
 
-      // Salvar no Firestore
       try {
-        const slideRef = doc(db, "carousels", carouselData.id, "slides", updatedSlides[index].id);
-        await updateDoc(slideRef, {
-          content: content,
-          updated_at: new Date().toISOString()
-        });
+        const { error } = await supabase
+          .from('slides')
+          .update({
+            content: content,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', updatedSlides[index].id);
+
+        if (error) throw error;
       } catch (error) {
         console.error("Erro ao atualizar slide:", error);
       }
@@ -349,14 +348,10 @@ const Editor = () => {
     try {
       const updatedSlides = [...carouselData.slides];
       
-      // Garantir que temos pelo menos o mínimo de slides
       const targetSlideCount = Math.max(texts.length, MIN_SLIDES);
       
-      // Criar slides se necessário
       while (updatedSlides.length < targetSlideCount) {
-        const newSlideRef = doc(collection(db, "carousels", carouselData.id, "slides"));
-        const newSlide: Slide = {
-          id: newSlideRef.id,
+        const newSlide: Omit<Slide, 'id'> = {
           carousel_id: carouselData.id,
           order_index: updatedSlides.length,
           content: "",
@@ -368,20 +363,29 @@ const Editor = () => {
           updated_at: new Date().toISOString()
         };
         
-        await setDoc(newSlideRef, newSlide);
-        updatedSlides.push(newSlide);
+        const { data: insertedSlide, error } = await supabase
+          .from('slides')
+          .insert(newSlide)
+          .select()
+          .single();
+
+        if (error) throw error;
+        updatedSlides.push(insertedSlide);
       }
 
-      // Aplicar textos aos slides
       for (let i = 0; i < texts.length; i++) {
         if (updatedSlides[i]) {
           updatedSlides[i].content = texts[i].text;
           
-          const slideRef = doc(db, "carousels", carouselData.id, "slides", updatedSlides[i].id);
-          await updateDoc(slideRef, {
-            content: texts[i].text,
-            updated_at: new Date().toISOString()
-          });
+          const { error } = await supabase
+            .from('slides')
+            .update({
+              content: texts[i].text,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', updatedSlides[i].id);
+
+          if (error) throw error;
         }
       }
 
@@ -410,15 +414,18 @@ const Editor = () => {
     try {
       const updatedSlides = [...carouselData.slides];
       
-      // Aplicar imagens aos slides existentes
       for (let i = 0; i < Math.min(imageUrls.length, updatedSlides.length); i++) {
         updatedSlides[i].image_url = imageUrls[i];
         
-        const slideRef = doc(db, "carousels", carouselData.id, "slides", updatedSlides[i].id);
-        await updateDoc(slideRef, {
-          image_url: imageUrls[i],
-          updated_at: new Date().toISOString()
-        });
+        const { error } = await supabase
+          .from('slides')
+          .update({
+            image_url: imageUrls[i],
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', updatedSlides[i].id);
+
+        if (error) throw error;
       }
 
       setCarouselData({
@@ -447,11 +454,15 @@ const Editor = () => {
       const updatedSlides = [...carouselData.slides];
       updatedSlides[slideIndex].image_url = imageUrl;
 
-      const slideRef = doc(db, "carousels", carouselData.id, "slides", updatedSlides[slideIndex].id);
-      await updateDoc(slideRef, {
-        image_url: imageUrl,
-        updated_at: new Date().toISOString()
-      });
+      const { error } = await supabase
+        .from('slides')
+        .update({
+          image_url: imageUrl,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', updatedSlides[slideIndex].id);
+
+      if (error) throw error;
 
       setCarouselData({
         ...carouselData,
@@ -477,14 +488,17 @@ const Editor = () => {
         background_value: color
       }));
 
-      // Atualizar no Firestore
       for (const slide of updatedSlides) {
-        const slideRef = doc(db, "carousels", carouselData.id, "slides", slide.id);
-        await updateDoc(slideRef, {
-          background_type: "color",
-          background_value: color,
-          updated_at: new Date().toISOString()
-        });
+        const { error } = await supabase
+          .from('slides')
+          .update({
+            background_type: "color",
+            background_value: color,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', slide.id);
+
+        if (error) throw error;
       }
 
       setCarouselData({
@@ -499,7 +513,6 @@ const Editor = () => {
   const handleSlideCountChange = async (count: number) => {
     if (!carouselData || !user) return;
 
-    // Validar limites
     const validCount = Math.max(MIN_SLIDES, Math.min(count, MAX_SLIDES));
 
     if (validCount !== count) {
@@ -514,11 +527,8 @@ const Editor = () => {
       const currentSlides = [...carouselData.slides];
       
       if (validCount > currentSlides.length) {
-        // Adicionar slides
         for (let i = currentSlides.length; i < validCount; i++) {
-          const newSlideRef = doc(collection(db, "carousels", carouselData.id, "slides"));
-          const newSlide: Slide = {
-            id: newSlideRef.id,
+          const newSlide: Omit<Slide, 'id'> = {
             carousel_id: carouselData.id,
             order_index: i,
             content: "",
@@ -530,11 +540,16 @@ const Editor = () => {
             updated_at: new Date().toISOString()
           };
           
-          await setDoc(newSlideRef, newSlide);
-          currentSlides.push(newSlide);
+          const { data: insertedSlide, error } = await supabase
+            .from('slides')
+            .insert(newSlide)
+            .select()
+            .single();
+
+          if (error) throw error;
+          currentSlides.push(insertedSlide);
         }
       } else if (validCount < currentSlides.length) {
-        // Remover slides extras (mantém apenas os primeiros 'validCount' slides)
         currentSlides.splice(validCount);
       }
 
@@ -561,11 +576,15 @@ const Editor = () => {
     if (!carouselData) return;
 
     try {
-      const carouselRef = doc(db, "carousels", carouselData.id);
-      await updateDoc(carouselRef, {
-        layout_type: layoutType,
-        updated_at: new Date().toISOString()
-      });
+      const { error } = await supabase
+        .from('carousels')
+        .update({
+          layout_type: layoutType,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', carouselData.id);
+
+      if (error) throw error;
 
       setCarouselData({
         ...carouselData,

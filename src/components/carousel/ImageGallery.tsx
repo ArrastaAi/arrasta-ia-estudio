@@ -1,6 +1,6 @@
 
 import React, { useState } from "react";
-import { useFirebaseAuth } from "@/contexts/FirebaseAuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useGalleryImages } from "@/hooks/useGalleryImages";
 import GalleryImage from "./gallery/GalleryImage";
@@ -17,9 +17,9 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({ carouselId, onSelectImage }
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [slideToApply, setSlideToApply] = useState(0);
   const { toast } = useToast();
-  const { user } = useFirebaseAuth();
+  const { user } = useAuth();
   
-  const { images, loading, deleteImage } = useGalleryImages(user?.uid, carouselId);
+  const { images, loading, deleteImage } = useGalleryImages(user?.id, carouselId);
 
   const handleApplyToSlide = () => {
     if (selectedIndex === null) return;
