@@ -1,13 +1,13 @@
 
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useFirebaseAuth } from "@/contexts/FirebaseAuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Carousel } from "@/types/database.types";
 
 export const useDashboardCarousels = () => {
-  const { user } = useFirebaseAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [carousels, setCarousels] = useState<Carousel[]>([]);
@@ -22,12 +22,12 @@ export const useDashboardCarousels = () => {
 
     try {
       setLoading(true);
-      console.log('[Dashboard] Iniciando busca de carrosséis para usuário:', user.uid);
+      console.log('[Dashboard] Iniciando busca de carrosséis para usuário:', user.id);
 
       const { data, error } = await supabase
         .from('carousels')
         .select('*')
-        .eq('user_id', user.uid)
+        .eq('user_id', user.id)
         .order('updated_at', { ascending: false });
 
       if (error) {

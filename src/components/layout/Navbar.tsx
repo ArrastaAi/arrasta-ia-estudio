@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { useFirebaseAuth } from "@/contexts/FirebaseAuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,22 +14,22 @@ import { Menu, X, Plus, LogOut, Settings, User, BellDot } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const Navbar = () => {
-  const { user, signOut } = useFirebaseAuth();
+  const { user, signOut } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { toast, isContextActive } = useToast();
+  const { toast } = useToast();
 
   const toggleMobileMenu = () => setMobileMenuOpen(!mobileMenuOpen);
   
   const showNotification = () => {
-    // Só mostra notificação se o contexto não estiver ativo
-    if (!isContextActive('new-message')) {
-      toast({
-        title: "Nova notificação",
-        description: "Você tem uma nova mensagem no sistema",
-        variant: "default",
-        context: 'new-message',
-      });
-    }
+    toast({
+      title: "Nova notificação",
+      description: "Você tem uma nova mensagem no sistema",
+      variant: "default",
+    });
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
   };
 
   return (
@@ -71,7 +71,7 @@ const Navbar = () => {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Avatar className="cursor-pointer border-2 border-purple-500">
-                    <AvatarImage src={user.photoURL} />
+                    <AvatarImage src={user.user_metadata?.picture || user.user_metadata?.avatar_url} />
                     <AvatarFallback>{user.email?.[0].toUpperCase()}</AvatarFallback>
                   </Avatar>
                 </DropdownMenuTrigger>
@@ -84,7 +84,7 @@ const Navbar = () => {
                       <Settings className="mr-2 h-4 w-4" /> Configurações
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => signOut()}>
+                  <DropdownMenuItem onClick={handleSignOut}>
                     <LogOut className="mr-2 h-4 w-4" /> Sair
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -159,11 +159,11 @@ const Navbar = () => {
               <div className="py-2 px-4">
                 <div className="flex items-center space-x-3">
                   <Avatar>
-                    <AvatarImage src={user.photoURL} />
+                    <AvatarImage src={user.user_metadata?.picture || user.user_metadata?.avatar_url} />
                     <AvatarFallback>{user.email?.[0].toUpperCase()}</AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="font-medium">{user.displayName || user.email}</p>
+                    <p className="font-medium">{user.user_metadata?.username || user.email}</p>
                   </div>
                 </div>
               </div>
@@ -177,7 +177,7 @@ const Navbar = () => {
               <button
                 className="flex items-center w-full py-2 px-4 hover:bg-gray-800 rounded"
                 onClick={() => {
-                  signOut();
+                  handleSignOut();
                   toggleMobileMenu();
                 }}
               >

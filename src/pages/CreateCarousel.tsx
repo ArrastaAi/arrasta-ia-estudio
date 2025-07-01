@@ -9,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, ArrowRight, Instagram, LayoutGrid, RectangleVertical, RectangleHorizontal } from "lucide-react";
 import MainLayout from "@/components/layout/MainLayout";
 import { useToast } from "@/hooks/use-toast";
-import { useFirebaseAuth } from "@/contexts/FirebaseAuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 
 const layoutOptions = [
@@ -49,7 +49,7 @@ const layoutOptions = [
 ];
 
 const CreateCarousel = () => {
-  const { user } = useFirebaseAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -76,6 +76,7 @@ const CreateCarousel = () => {
         description: "Você precisa estar logado para criar um carrossel",
         variant: "destructive",
       });
+      navigate("/auth");
       return;
     }
 
@@ -90,6 +91,7 @@ const CreateCarousel = () => {
 
     try {
       setLoading(true);
+      console.log('[CreateCarousel] Criando carrossel para usuário:', user.id);
 
       const { data, error } = await supabase
         .from('carousels')
@@ -97,7 +99,7 @@ const CreateCarousel = () => {
           title: formData.title,
           description: formData.description,
           layout_type: formData.layout_type,
-          user_id: user.uid,
+          user_id: user.id, // Usando user.id do Supabase Auth (UUID)
           published: false,
         })
         .select()
@@ -107,6 +109,7 @@ const CreateCarousel = () => {
         throw error;
       }
 
+      console.log('[CreateCarousel] Carrossel criado:', data);
       toast({
         title: "Sucesso",
         description: "Carrossel criado com sucesso!",
@@ -117,7 +120,7 @@ const CreateCarousel = () => {
       console.error('[CreateCarousel] Erro ao criar carrossel:', error);
       toast({
         title: "Erro",
-        description: error.message,
+        description: error.message || "Erro ao criar carrossel",
         variant: "destructive",
       });
     } finally {

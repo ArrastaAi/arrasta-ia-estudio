@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,13 +12,13 @@ import CreateCarousel from "./pages/CreateCarousel";
 import Editor from "./pages/Editor";
 import Templates from "./pages/Templates";
 import Settings from "./pages/Settings";
-import { FirebaseAuthProvider, useFirebaseAuth } from "./contexts/FirebaseAuthContext";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 
 const queryClient = new QueryClient();
 
 // Componente de proteção de rota
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useFirebaseAuth();
+  const { user, loading } = useAuth();
 
   if (loading) {
     return (
@@ -73,13 +74,13 @@ const AppRoutes = () => {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <FirebaseAuthProvider>
+      <AuthProvider>
         <Toaster />
         <Sonner />
         <BrowserRouter>
           <AppRoutes />
         </BrowserRouter>
-      </FirebaseAuthProvider>
+      </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
