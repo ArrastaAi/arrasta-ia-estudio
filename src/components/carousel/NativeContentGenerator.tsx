@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,6 +10,7 @@ import { Loader2, Wand2, Check, Edit3, Users, Target, BookOpen, Settings } from 
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStreamingGeneration } from '@/hooks/useStreamingGeneration';
+import { useCarouselCache } from '@/hooks/useCarouselCache';
 import AgentProgressIndicator from './AgentProgressIndicator';
 
 interface SlideContent {
@@ -26,16 +27,26 @@ interface GeneratedText {
 interface NativeContentGeneratorProps {
   carouselId: string;
   onApplyTexts: (texts: GeneratedText[]) => void;
+  onNavigateToDesign?: () => void;
 }
 
 const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
   carouselId,
-  onApplyTexts
+  onApplyTexts,
+  onNavigateToDesign
 }) => {
   const { toast } = useToast();
   const { user } = useAuth();
   const [generatedSlides, setGeneratedSlides] = useState<SlideContent[]>([]);
   const [isEditing, setIsEditing] = useState(false);
+  const { 
+    checkCache, 
+    saveToCache, 
+    saveCarouselContent, 
+    loadCarouselContent,
+    saveUserPreferences,
+    loadUserPreferences 
+  } = useCarouselCache();
   const { 
     isStreaming, 
     progress, 
@@ -56,6 +67,32 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
     context: '',
     ctaType: 'auto'
   });
+
+  // Carregar conteúdo salvo e preferências ao inicializar
+  useEffect(() => {
+    const loadSavedData = async () => {
+      if (!carouselId || !user) return;
+
+      // Carregar conteúdo do carrossel
+      const savedContent = await loadCarouselContent(carouselId);
+      if (savedContent?.parameters && savedContent?.results) {
+        setFormData(savedContent.parameters);
+        setGeneratedSlides(savedContent.results);
+        toast({
+          title: "Conteúdo restaurado",
+          description: "Última geração foi restaurada automaticamente."
+        });
+      } else {
+        // Carregar preferências do usuário
+        const preferences = await loadUserPreferences();
+        if (preferences) {
+          setFormData(prev => ({ ...prev, ...preferences }));
+        }
+      }
+    };
+
+    loadSavedData();
+  }, [carouselId, user, loadCarouselContent, loadUserPreferences, toast]);
 
   const intentions = [
     { value: 'storytelling', label: 'Storytelling', icon: BookOpen, color: 'bg-pink-500' },
@@ -136,38 +173,53 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
       return;
     }
 
+    // Verificar cache primeiro
+    const cachedSlides = await checkCache(formData);
+    if (cachedSlides) {
+      setGeneratedSlides(cachedSlides);
+      toast({
+        title: "Conteúdo encontrado no cache",
+        description: "Resultado anterior foi restaurado instantaneamente."
+      });
+      return;
+    }
+
+    // Salvar preferências do usuário
+    await saveUserPreferences(formData);
+
     reset();
     setGeneratedSlides([]);
     
     await startStreaming({
-      topic: formData.topic,
-      audience: formData.audience,
-      intention: formData.intention,
-      slideCount: formData.slideCount,
-      context: formData.context,
-      ctaType: formData.ctaType
+      ...formData,
+      user_id: user.id
     });
   };
 
-  const handleApplyContent = () => {
+  const handleApplyContent = async () => {
     const slidesToApply = slides.length > 0 ? slides : generatedSlides;
     if (slidesToApply.length === 0) return;
+    
+    // Salvar conteúdo no carrossel
+    await saveCarouselContent(carouselId, formData, slidesToApply);
+    
+    // Salvar no cache para futuras consultas
+    await saveToCache(formData, slidesToApply);
     
     const texts = convertSlidesToTexts(slidesToApply);
     onApplyTexts(texts);
     
     toast({
       title: "Conteúdo aplicado ao designer!",
-      description: slidesToApply.length + " slides foram aplicados e você será redirecionado para o designer."
+      description: slidesToApply.length + " slides foram aplicados e salvos."
     });
 
-    // Navegar automaticamente para a aba Design após aplicar
-    setTimeout(() => {
-      const designTab = document.querySelector('[value="design"]') as HTMLButtonElement;
-      if (designTab) {
-        designTab.click();
-      }
-    }, 500);
+    // Usar callback direto para navegação se disponível
+    if (onNavigateToDesign) {
+      setTimeout(() => {
+        onNavigateToDesign();
+      }, 300);
+    }
   };
 
   const selectedIntention = intentions.find(i => i.value === formData.intention);

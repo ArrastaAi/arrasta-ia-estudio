@@ -21,7 +21,7 @@ interface CarouselData {
   description: string | null;
   layout_type: string;
   narrative_style: string | null;
-  content: string | null;
+  content: any;
   slides: Slide[];
 }
 
@@ -456,7 +456,8 @@ const Editor = () => {
                     carouselId={carouselData?.id || ""} 
                     slides={carouselData?.slides || []} 
                     onApplyGeneratedTexts={handleApplyGeneratedTexts} 
-                    onUpdateSlideContent={handleUpdateSlideContent} 
+                    onUpdateSlideContent={handleUpdateSlideContent}
+                    onNavigateToDesign={() => setActiveTab("design")}
                   />
                 </TabsContent>
                 <TabsContent value="design" className="mt-0">

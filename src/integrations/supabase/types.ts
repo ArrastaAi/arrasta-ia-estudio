@@ -42,6 +42,39 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_generation_cache: {
+        Row: {
+          cache_key: string
+          created_at: string
+          expires_at: string
+          generation_time: number | null
+          id: string
+          parameters: Json
+          results: Json
+          user_id: string | null
+        }
+        Insert: {
+          cache_key: string
+          created_at?: string
+          expires_at?: string
+          generation_time?: number | null
+          id?: string
+          parameters: Json
+          results: Json
+          user_id?: string | null
+        }
+        Update: {
+          cache_key?: string
+          created_at?: string
+          expires_at?: string
+          generation_time?: number | null
+          id?: string
+          parameters?: Json
+          results?: Json
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       ai_generations: {
         Row: {
           agent_type: string
@@ -211,7 +244,7 @@ export type Database = {
       carousels: {
         Row: {
           ai_generated: boolean | null
-          content: string | null
+          content: Json | null
           created_at: string
           description: string | null
           id: string
@@ -225,7 +258,7 @@ export type Database = {
         }
         Insert: {
           ai_generated?: boolean | null
-          content?: string | null
+          content?: Json | null
           created_at?: string
           description?: string | null
           id?: string
@@ -239,7 +272,7 @@ export type Database = {
         }
         Update: {
           ai_generated?: boolean | null
-          content?: string | null
+          content?: Json | null
           created_at?: string
           description?: string | null
           id?: string
@@ -459,6 +492,33 @@ export type Database = {
         }
         Relationships: []
       }
+      user_preferences: {
+        Row: {
+          created_at: string
+          id: string
+          preference_data: Json
+          preference_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          preference_data: Json
+          preference_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          preference_data?: Json
+          preference_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -467,6 +527,14 @@ export type Database = {
       binary_quantize: {
         Args: { "": string } | { "": unknown }
         Returns: unknown
+      }
+      cleanup_expired_cache: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      generate_params_hash: {
+        Args: { params: Json }
+        Returns: string
       }
       halfvec_avg: {
         Args: { "": number[] }

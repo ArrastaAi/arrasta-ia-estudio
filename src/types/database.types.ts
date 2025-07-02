@@ -16,7 +16,7 @@ export type Carousel = {
   layout_type: 'feed_square' | 'stories' | 'pinterest' | 'facebook' | 'youtube' | 'instagram_rect';
   style_theme: string | null;
   narrative_style: string | null;
-  content: string | null;
+  content: any;
   ai_generated: boolean;
   published: boolean;
   created_at: string;

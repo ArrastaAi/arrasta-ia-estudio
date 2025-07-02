@@ -8,11 +8,13 @@ interface ContentTabProps {
   slides: Slide[];
   onApplyGeneratedTexts: (texts: { id: number; text: string }[]) => void;
   onUpdateSlideContent: (index: number, content: string) => void;
+  onNavigateToDesign?: () => void;
 }
 
 const ContentTab: React.FC<ContentTabProps> = ({ 
   carouselId, 
-  onApplyGeneratedTexts
+  onApplyGeneratedTexts,
+  onNavigateToDesign
 }) => {
   const handleApplyTexts = (texts: { id: number; text: string }[]) => {
     onApplyGeneratedTexts(texts);
@@ -23,6 +25,7 @@ const ContentTab: React.FC<ContentTabProps> = ({
       <NativeContentGenerator 
         carouselId={carouselId} 
         onApplyTexts={handleApplyTexts}
+        onNavigateToDesign={onNavigateToDesign}
       />
     </div>
   );
