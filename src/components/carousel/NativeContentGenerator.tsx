@@ -51,18 +51,18 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
   const [formData, setFormData] = useState({
     topic: '',
     audience: '',
-    intention: 'educar',
+    intention: 'storytelling',
     slideCount: 5,
     context: '',
     ctaType: 'auto'
   });
 
   const intentions = [
+    { value: 'storytelling', label: 'Storytelling', icon: BookOpen, color: 'bg-pink-500' },
     { value: 'educar', label: 'Educar', icon: BookOpen, color: 'bg-blue-500' },
     { value: 'vender', label: 'Vender', icon: Target, color: 'bg-green-500' },
     { value: 'engajar', label: 'Engajar', icon: Users, color: 'bg-purple-500' },
-    { value: 'gerar-consciencia', label: 'Conscientizar', icon: Settings, color: 'bg-orange-500' },
-    { value: 'storytelling', label: 'Storytelling', icon: BookOpen, color: 'bg-pink-500' }
+    { value: 'gerar-consciencia', label: 'Conscientizar', icon: Settings, color: 'bg-orange-500' }
   ];
 
   const ctaTypes = [
