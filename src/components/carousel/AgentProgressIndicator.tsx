@@ -123,7 +123,8 @@ const AgentProgressIndicator: React.FC<AgentProgressProps> = ({
           </div>
         ) : null}
 
-        <div className="grid grid-cols-2 gap-3">
+        {/* Layout responsivo: grid em mobile, flex horizontal no desktop */}
+        <div className="grid grid-cols-2 gap-3 md:flex md:gap-4 md:justify-between">
           {Object.entries(agentConfig).map(([key, config], index) => {
             const status = error ? 'error' : getAgentStatus(key);
             const shouldShow = shouldShowAgent(key);
@@ -134,7 +135,7 @@ const AgentProgressIndicator: React.FC<AgentProgressProps> = ({
             return (
               <div 
                 key={key}
-                className={`p-3 rounded-lg border-2 transition-all duration-500 animate-fade-in ${
+                className={`p-3 rounded-lg border-2 transition-all duration-500 animate-fade-in md:flex-1 md:min-w-0 ${
                   status === 'error'
                     ? 'border-red-500/50 bg-red-500/10'
                     : status === 'active' 
@@ -171,7 +172,11 @@ const AgentProgressIndicator: React.FC<AgentProgressProps> = ({
                     }`}>
                       {config.title}
                     </p>
-                    <p className="text-xs text-gray-500 truncate">
+                    <p className="text-xs text-gray-500 truncate md:hidden">
+                      {config.description}
+                    </p>
+                    {/* Descrição oculta no desktop para economizar espaço */}
+                    <p className="hidden md:block text-xs text-gray-500 truncate">
                       {config.description}
                     </p>
                   </div>
