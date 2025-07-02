@@ -258,29 +258,24 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
           </div>
 
           <div>
-            <Label htmlFor="ctaType" className="text-white">Tipo de CTA (Último Slide)</Label>
-            <Select 
-              value={formData.ctaType} 
-              onValueChange={(value) => handleInputChange('ctaType', value)}
-            >
-              <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-gray-700 border-gray-600">
-                {ctaTypes.map((cta) => (
-                  <SelectItem 
-                    key={cta.value} 
-                    value={cta.value} 
-                    className="text-white hover:bg-gray-600"
-                  >
-                    <div className="flex flex-col">
-                      <span className="font-medium">{cta.label}</span>
-                      <span className="text-xs text-gray-400">{cta.description}</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label className="text-white">Tipo de CTA (Último Slide)</Label>
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-2 mt-2">
+              {ctaTypes.map((cta) => (
+                <button
+                  key={cta.value}
+                  type="button"
+                  onClick={() => handleInputChange('ctaType', cta.value)}
+                  className={`p-3 rounded-lg border-2 text-left transition-all duration-200 ${
+                    formData.ctaType === cta.value
+                      ? 'border-purple-500 bg-purple-500/20 text-purple-300'
+                      : 'border-gray-600 bg-gray-700/50 text-gray-300 hover:border-gray-500 hover:bg-gray-600/50'
+                  }`}
+                >
+                  <div className="text-sm font-medium">{cta.label}</div>
+                  <div className="text-xs text-gray-400 mt-1">{cta.description}</div>
+                </button>
+              ))}
+            </div>
             {formData.ctaType !== 'auto' && (
               <div className="mt-2 p-2 bg-gray-600 rounded text-xs text-gray-300">
                 <strong>Exemplo:</strong> {ctaTypes.find(c => c.value === formData.ctaType)?.example}
