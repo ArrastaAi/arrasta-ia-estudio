@@ -461,6 +461,7 @@ const Editor = () => {
                     carouselId={carouselData?.id || ""} 
                     slides={carouselData?.slides || []}
                     layoutType={carouselData?.layout_type || "instagram_rect"}
+                    theme={carouselData?.title || "Conteúdo"}
                     onImagesUploaded={handleImagesUploaded} 
                     onSelectImage={handleApplyImageToSlide} 
                     onBackgroundColorChange={handleBackgroundColorChange}

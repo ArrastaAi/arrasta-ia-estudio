@@ -5,9 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Upload, Palette, Info } from "lucide-react";
+import { Upload, Palette, Info, Sparkles } from "lucide-react";
 import ImageUpload from "./ImageUpload";
 import ImageGallery from "./ImageGallery";
+import AIImageGenerator from "./AIImageGenerator";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { INSTAGRAM_COLORS } from "@/types/carousel.types";
@@ -18,6 +19,7 @@ interface DesignTabProps {
   carouselId: string;
   slides?: Slide[];
   layoutType?: string;
+  theme?: string;
   onImagesUploaded: (imageUrls: string[]) => void;
   onSelectImage: (imageUrl: string, slideIndex: number) => void;
   onBackgroundColorChange?: (color: string) => void;
@@ -29,13 +31,14 @@ const DesignTab: React.FC<DesignTabProps> = ({
   carouselId,
   slides = [],
   layoutType = "instagram_rect",
+  theme = "Marketing Digital",
   onImagesUploaded,
   onSelectImage,
   onBackgroundColorChange,
   textStyles,
   onUpdateTextStyles
 }) => {
-  const [activeTab, setActiveTab] = useState<string>("upload");
+  const [activeTab, setActiveTab] = useState<string>("ai-generate");
   const [backgroundColor, setBackgroundColor] = useState<string>("#000000");
   const { toast } = useToast();
   const { user } = useAuth();
@@ -106,16 +109,28 @@ const DesignTab: React.FC<DesignTabProps> = ({
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-2 mb-4">
+        <TabsList className="grid grid-cols-3 mb-4">
+          <TabsTrigger value="ai-generate">
+            <Sparkles className="h-4 w-4 mr-2" />
+            Gerar com IA
+          </TabsTrigger>
           <TabsTrigger value="upload">
             <Upload className="h-4 w-4 mr-2" />
-            Imagens
+            Upload Manual
           </TabsTrigger>
           <TabsTrigger value="styles">
             <Palette className="h-4 w-4 mr-2" />
             Estilos
           </TabsTrigger>
         </TabsList>
+        
+        <TabsContent value="ai-generate" className="mt-0">
+          <AIImageGenerator 
+            slides={slides}
+            theme={theme}
+            onImagesApplied={onImagesUploaded}
+          />
+        </TabsContent>
         
         <TabsContent value="upload" className="mt-0 space-y-4">
           <ImageUpload carouselId={carouselId} onImagesUploaded={handleImagesUploaded} />
