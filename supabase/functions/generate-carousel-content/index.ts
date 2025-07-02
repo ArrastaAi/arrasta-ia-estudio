@@ -12,6 +12,7 @@ interface GenerationRequest {
   intention: string;
   slideCount: number;
   context?: string;
+  ctaType?: string;
 }
 
 interface SlideContent {
@@ -233,14 +234,20 @@ async function generateWithAgentPipeline(request: GenerationRequest): Promise<Ge
       slides.splice(targetSlides);
     }
 
-    // Garantir que o último slide tenha CTA
+    // Aplicar CTA específico ao último slide
     if (slides.length > 0) {
       const lastSlide = slides[slides.length - 1];
-      if (!lastSlide.body.some(line => line.toLowerCase().includes('acesse') || 
-                                     line.toLowerCase().includes('clique') ||
-                                     line.toLowerCase().includes('saiba mais') ||
-                                     line.toLowerCase().includes('confira'))) {
-        lastSlide.body.push("👆 Acesse o link para saber mais!");
+      const ctaText = getCTAText(request.ctaType || 'auto', request.intention);
+      
+      // Adicionar CTA se não existir um apropriado
+      if (!lastSlide.body.some(line => 
+        line.toLowerCase().includes('curta') || 
+        line.toLowerCase().includes('coment') ||
+        line.toLowerCase().includes('marque') ||
+        line.toLowerCase().includes('compartilhe') ||
+        line.toLowerCase().includes('acesse')
+      )) {
+        lastSlide.body.push(ctaText);
       }
     }
 
@@ -302,13 +309,20 @@ async function generateWithStreamingPipeline(request: GenerationRequest, control
       slides.splice(targetSlides);
     }
 
+    // Aplicar CTA específico ao último slide
     if (slides.length > 0) {
       const lastSlide = slides[slides.length - 1];
-      if (!lastSlide.body.some(line => line.toLowerCase().includes('acesse') || 
-                                     line.toLowerCase().includes('clique') ||
-                                     line.toLowerCase().includes('saiba mais') ||
-                                     line.toLowerCase().includes('confira'))) {
-        lastSlide.body.push("👆 Acesse o link para saber mais!");
+      const ctaText = getCTAText(request.ctaType || 'auto', request.intention);
+      
+      // Adicionar CTA se não existir um apropriado
+      if (!lastSlide.body.some(line => 
+        line.toLowerCase().includes('curta') || 
+        line.toLowerCase().includes('coment') ||
+        line.toLowerCase().includes('marque') ||
+        line.toLowerCase().includes('compartilhe') ||
+        line.toLowerCase().includes('acesse')
+      )) {
+        lastSlide.body.push(ctaText);
       }
     }
 
@@ -345,6 +359,7 @@ serve(async (req) => {
       topic: request.topic,
       slideCount: request.slideCount,
       intention: request.intention,
+      ctaType: request.ctaType || 'auto',
       streaming: isStreaming
     });
 
@@ -397,3 +412,28 @@ serve(async (req) => {
     });
   }
 });
+
+function getCTAText(ctaType: string, intention: string): string {
+  switch (ctaType) {
+    case 'curtir':
+      return intention === 'vender' ? 
+        "❤️ Curta se isso faz sentido para seu negócio!" : 
+        "❤️ Curta se você concorda!";
+    case 'comentar':
+      return intention === 'educar' ? 
+        "💬 Conte sua experiência nos comentários!" : 
+        "💬 O que você achou? Comente abaixo!";
+    case 'marcar':
+      return intention === 'engajar' ? 
+        "👥 Marque 3 amigos que precisam ver isso!" : 
+        "👥 Marque aquele amigo que precisa saber disso!";
+    case 'compartilhar':
+      return "🔄 Compartilhe para ajudar mais pessoas!";
+    default:
+      // CTA automático baseado na intenção
+      if (intention === 'vender') return "👆 Acesse o link para saber mais!";
+      if (intention === 'engajar') return "💬 O que você pensa sobre isso?";
+      if (intention === 'educar') return "🔄 Compartilhe se foi útil!";
+      return "❤️ Curta se você gostou!";
+  }
+}

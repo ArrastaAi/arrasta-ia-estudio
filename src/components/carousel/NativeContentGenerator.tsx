@@ -53,7 +53,8 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
     audience: '',
     intention: 'educar',
     slideCount: 5,
-    context: ''
+    context: '',
+    ctaType: 'auto'
   });
 
   const intentions = [
@@ -62,6 +63,39 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
     { value: 'engajar', label: 'Engajar', icon: Users, color: 'bg-purple-500' },
     { value: 'gerar-consciencia', label: 'Conscientizar', icon: Settings, color: 'bg-orange-500' },
     { value: 'storytelling', label: 'Storytelling', icon: BookOpen, color: 'bg-pink-500' }
+  ];
+
+  const ctaTypes = [
+    { 
+      value: 'curtir', 
+      label: 'Curtir', 
+      description: 'Incentive curtidas e reações',
+      example: '"Curta se você concorda! ❤️"'
+    },
+    { 
+      value: 'comentar', 
+      label: 'Comentar', 
+      description: 'Estimule comentários e discussões',
+      example: '"Conte sua experiência nos comentários! 💬"'
+    },
+    { 
+      value: 'marcar', 
+      label: 'Marcar um amigo', 
+      description: 'Peça para marcar amigos',
+      example: '"Marque aquele amigo que precisa ver isso! 👥"'
+    },
+    { 
+      value: 'compartilhar', 
+      label: 'Compartilhar', 
+      description: 'Incentive o compartilhamento',
+      example: '"Compartilhe para ajudar mais pessoas! 🔄"'
+    },
+    { 
+      value: 'auto', 
+      label: 'Auto', 
+      description: 'O agente escolhe o melhor CTA',
+      example: 'CTA otimizado automaticamente'
+    }
   ];
 
   const handleInputChange = (field: string, value: string | number) => {
@@ -110,7 +144,8 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
       audience: formData.audience,
       intention: formData.intention,
       slideCount: formData.slideCount,
-      context: formData.context
+      context: formData.context,
+      ctaType: formData.ctaType
     });
   };
 
@@ -223,6 +258,37 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
           </div>
 
           <div>
+            <Label htmlFor="ctaType" className="text-white">Tipo de CTA (Último Slide)</Label>
+            <Select 
+              value={formData.ctaType} 
+              onValueChange={(value) => handleInputChange('ctaType', value)}
+            >
+              <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-gray-700 border-gray-600">
+                {ctaTypes.map((cta) => (
+                  <SelectItem 
+                    key={cta.value} 
+                    value={cta.value} 
+                    className="text-white hover:bg-gray-600"
+                  >
+                    <div className="flex flex-col">
+                      <span className="font-medium">{cta.label}</span>
+                      <span className="text-xs text-gray-400">{cta.description}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {formData.ctaType !== 'auto' && (
+              <div className="mt-2 p-2 bg-gray-600 rounded text-xs text-gray-300">
+                <strong>Exemplo:</strong> {ctaTypes.find(c => c.value === formData.ctaType)?.example}
+              </div>
+            )}
+          </div>
+
+          <div>
             <Label htmlFor="context" className="text-white">Contexto adicional</Label>
             <Textarea
               id="context"
@@ -299,9 +365,16 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
                 <Edit3 className="h-5 w-5" />
                 Conteúdo Gerado ({(slides.length > 0 ? slides : generatedSlides).length} slides)
                 {selectedIntention && (
-                  <Badge variant="secondary" className={`ml-2 ${selectedIntention.color} text-white`}>
-                    {selectedIntention.label}
-                  </Badge>
+                  <>
+                    <Badge variant="secondary" className={`ml-2 ${selectedIntention.color} text-white`}>
+                      {selectedIntention.label}
+                    </Badge>
+                    {formData.ctaType !== 'auto' && (
+                      <Badge variant="outline" className="ml-2 border-purple-500 text-purple-300">
+                        CTA: {ctaTypes.find(c => c.value === formData.ctaType)?.label}
+                      </Badge>
+                    )}
+                  </>
                 )}
               </CardTitle>
               <Button
