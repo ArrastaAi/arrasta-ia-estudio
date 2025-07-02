@@ -78,10 +78,6 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
       if (savedContent?.parameters && savedContent?.results) {
         setFormData(savedContent.parameters);
         setGeneratedSlides(savedContent.results);
-        toast({
-          title: "Conteúdo restaurado",
-          description: "Última geração foi restaurada automaticamente."
-        });
       } else {
         // Carregar preferências do usuário
         const preferences = await loadUserPreferences();
@@ -177,10 +173,6 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
     const cachedSlides = await checkCache(formData);
     if (cachedSlides) {
       setGeneratedSlides(cachedSlides);
-      toast({
-        title: "Conteúdo encontrado no cache",
-        description: "Resultado anterior foi restaurado instantaneamente."
-      });
       return;
     }
 
@@ -208,11 +200,6 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
     
     const texts = convertSlidesToTexts(slidesToApply);
     onApplyTexts(texts);
-    
-    toast({
-      title: "Conteúdo aplicado ao designer!",
-      description: slidesToApply.length + " slides foram aplicados e salvos."
-    });
 
     // Usar callback direto para navegação se disponível
     if (onNavigateToDesign) {
@@ -425,10 +412,10 @@ const NativeContentGenerator: React.FC<NativeContentGeneratorProps> = ({
                 )}
               </CardTitle>
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 onClick={() => setIsEditing(!isEditing)}
-                className="border-gray-600 text-gray-300 hover:bg-gray-700"
+                className="bg-gray-800 border border-gray-600 text-gray-300 hover:bg-gray-700"
               >
                 {isEditing ? 'Visualizar' : 'Editar'}
               </Button>

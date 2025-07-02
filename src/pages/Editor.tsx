@@ -258,10 +258,6 @@ const Editor = () => {
         slides: updatedSlides
       });
 
-      toast({
-        title: "Textos aplicados",
-        description: `${Math.min(texts.length, MAX_SLIDES)} textos foram aplicados aos slides.`
-      });
     } catch (error) {
       console.error("Erro ao aplicar textos:", error);
       toast({
