@@ -1,16 +1,16 @@
-
 import React, { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Upload, Palette, Sparkles, Wand2, Eye, Settings2 } from "lucide-react";
 import ImageUpload from "./ImageUpload";
 import ImageGallery from "./ImageGallery";
 import AIImageGenerator from "./AIImageGenerator";
+import AutoLayoutApplier from "./design/AutoLayoutApplier";
+import { LayoutRecommendation } from "./design/SmartLayoutEngine";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { INSTAGRAM_COLORS } from "@/types/carousel.types";
@@ -27,6 +27,7 @@ interface DesignTabProps {
   onBackgroundColorChange?: (color: string) => void;
   textStyles?: any;
   onUpdateTextStyles?: (styles: any) => void;
+  onSlidesUpdate?: (slides: Slide[]) => void;
 }
 
 const DesignTab: React.FC<DesignTabProps> = ({
@@ -38,7 +39,8 @@ const DesignTab: React.FC<DesignTabProps> = ({
   onSelectImage,
   onBackgroundColorChange,
   textStyles,
-  onUpdateTextStyles
+  onUpdateTextStyles,
+  onSlidesUpdate
 }) => {
   const [activeTab, setActiveTab] = useState<string>("magic-design");
   const [backgroundColor, setBackgroundColor] = useState<string>("hsl(240, 10%, 3.9%)");
@@ -48,46 +50,38 @@ const DesignTab: React.FC<DesignTabProps> = ({
   const handleImagesUploaded = async (imageUrls: string[]) => {
     onImagesUploaded(imageUrls);
     setActiveTab("gallery");
-
     toast({
       title: `${imageUrls.length} ${imageUrls.length === 1 ? 'imagem adicionada' : 'imagens adicionadas'}`,
       description: "As imagens foram aplicadas aos slides automaticamente."
     });
   };
 
-  const handleBackgroundColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const color = e.target.value;
-    setBackgroundColor(color);
-    if (onBackgroundColorChange) {
-      onBackgroundColorChange(color);
-    }
+  const handleLayoutsApplied = (layouts: { slideId: string; layout: LayoutRecommendation }[]) => {
+    if (!onSlidesUpdate) return;
+    
+    const updatedSlides = slides.map(slide => {
+      const layoutData = layouts.find(l => l.slideId === slide.id);
+      if (layoutData) {
+        const effects = {
+          textPosition: layoutData.layout.textPosition,
+          overlayIntensity: layoutData.layout.overlayIntensity,
+          textColor: layoutData.layout.textColor,
+          fontSize: layoutData.layout.fontSize,
+          alignment: layoutData.layout.alignment,
+          padding: layoutData.layout.padding
+        };
+        
+        return {
+          ...slide,
+          effects: { ...slide.effects, ...effects }
+        };
+      }
+      return slide;
+    });
+    
+    onSlidesUpdate(updatedSlides);
   };
 
-  const handleColorChange = (color: string) => {
-    if (onUpdateTextStyles && textStyles) {
-      const newStyles = { 
-        ...textStyles, 
-        textColor: color 
-      };
-      onUpdateTextStyles(newStyles);
-      toast({
-        title: "Cor alterada",
-        description: "Nova cor aplicada com sucesso."
-      });
-    }
-  };
-
-  const fontSizes = [16, 20, 24, 28, 32];
-
-  const handleFontSizeChange = (size: number) => {
-    if (onUpdateTextStyles && textStyles) {
-      const newStyles = { 
-        ...textStyles, 
-        fontSize: size 
-      };
-      onUpdateTextStyles(newStyles);
-    }
-  };
   const handleMagicDesign = async () => {
     if (!user) {
       toast({
@@ -112,13 +106,11 @@ const DesignTab: React.FC<DesignTabProps> = ({
       description: "Gerando imagens inteligentes e aplicando layout profissional..."
     });
 
-    // Automaticamente mudar para a aba de geração de IA
     setActiveTab("ai-generate");
   };
 
   return (
     <div className="space-y-6">
-      {/* Preview do Carrossel */}
       {slides.length > 0 && slides.some(slide => slide.content && slide.content.trim() !== "") && (
         <Card className="bg-background/60 backdrop-blur border-border/50">
           <CardHeader className="pb-3">
@@ -138,7 +130,7 @@ const DesignTab: React.FC<DesignTabProps> = ({
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-4 w-full h-auto p-1 bg-background/50 backdrop-blur">
+        <TabsList className="grid grid-cols-5 w-full h-auto p-1 bg-background/50 backdrop-blur">
           <TabsTrigger value="magic-design" className="flex flex-col gap-1 h-16 data-[state=active]:bg-background data-[state=active]:text-foreground">
             <Wand2 className="h-4 w-4" />
             <span className="text-xs font-medium">Magic Design</span>
@@ -146,6 +138,10 @@ const DesignTab: React.FC<DesignTabProps> = ({
           <TabsTrigger value="ai-generate" className="flex flex-col gap-1 h-16 data-[state=active]:bg-background data-[state=active]:text-foreground">
             <Sparkles className="h-4 w-4" />
             <span className="text-xs font-medium">Gerar IA</span>
+          </TabsTrigger>
+          <TabsTrigger value="layout" className="flex flex-col gap-1 h-16 data-[state=active]:bg-background data-[state=active]:text-foreground">
+            <Settings2 className="h-4 w-4" />
+            <span className="text-xs font-medium">Layout Auto</span>
           </TabsTrigger>
           <TabsTrigger value="upload" className="flex flex-col gap-1 h-16 data-[state=active]:bg-background data-[state=active]:text-foreground">
             <Upload className="h-4 w-4" />
@@ -224,6 +220,13 @@ const DesignTab: React.FC<DesignTabProps> = ({
             onImagesApplied={onImagesUploaded}
           />
         </TabsContent>
+
+        <TabsContent value="layout" className="mt-6">
+          <AutoLayoutApplier 
+            slides={slides}
+            onLayoutsApplied={handleLayoutsApplied}
+          />
+        </TabsContent>
         
         <TabsContent value="upload" className="mt-6 space-y-6">
           <Card className="bg-background/60 backdrop-blur border-border/50">
@@ -240,47 +243,6 @@ const DesignTab: React.FC<DesignTabProps> = ({
               <ImageUpload carouselId={carouselId} onImagesUploaded={handleImagesUploaded} />
             </CardContent>
           </Card>
-          
-          <Card className="bg-background/60 backdrop-blur border-border/50">
-            <CardHeader>
-              <CardTitle>Cor de Fundo</CardTitle>
-              <CardDescription>
-                Personalize a cor de fundo dos seus slides
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <input
-                    id="backgroundColor"
-                    type="color"
-                    value={backgroundColor}
-                    onChange={handleBackgroundColorChange}
-                    className="w-12 h-12 rounded-lg cursor-pointer border border-border"
-                  />
-                  <Input
-                    type="text"
-                    value={backgroundColor}
-                    onChange={handleBackgroundColorChange}
-                    className="w-32"
-                    placeholder="HSL color"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="bg-background/60 backdrop-blur border-border/50">
-            <CardHeader>
-              <CardTitle>Galeria de Imagens</CardTitle>
-              <CardDescription>
-                Selecione imagens já enviadas para aplicar nos slides
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ImageGallery carouselId={carouselId} onSelectImage={onSelectImage} />
-            </CardContent>
-          </Card>
         </TabsContent>
         
         <TabsContent value="styles" className="mt-6 space-y-6">
@@ -295,27 +257,6 @@ const DesignTab: React.FC<DesignTabProps> = ({
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Tamanhos de Fonte */}
-              <div className="space-y-3">
-                <Label className="text-sm font-medium">Tamanho da Fonte</Label>
-                <div className="flex gap-2">
-                  {fontSizes.map(size => (
-                    <Button
-                      key={size}
-                      size="sm"
-                      variant={textStyles?.fontSize === size ? "default" : "outline"}
-                      onClick={() => handleFontSizeChange(size)}
-                      className="px-3"
-                    >
-                      {size}px
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Cores do Texto */}
               <div className="space-y-3">
                 <Label className="text-sm font-medium">Cores do Texto</Label>
                 <div className="grid grid-cols-5 gap-3">
@@ -328,7 +269,11 @@ const DesignTab: React.FC<DesignTabProps> = ({
                             : 'border-border hover:border-muted-foreground'
                         }`}
                         style={{ backgroundColor: color }}
-                        onClick={() => handleColorChange(color)}
+                        onClick={() => {
+                          if (onUpdateTextStyles && textStyles) {
+                            onUpdateTextStyles({ ...textStyles, textColor: color });
+                          }
+                        }}
                         title={name}
                       />
                       <span className="text-xs text-muted-foreground capitalize">
