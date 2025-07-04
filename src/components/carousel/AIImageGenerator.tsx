@@ -133,11 +133,12 @@ const AIImageGenerator: React.FC<AIImageGeneratorProps> = ({
         throw new Error(data.error || 'Falha na geração de imagens');
       }
 
+      console.log('🎉 Imagens geradas com sucesso:', data.generatedImages);
       setGeneratedImages(data.generatedImages);
       
       toast({
         title: "Imagens geradas com sucesso!",
-        description: `${data.generatedImages.length} imagens foram criadas com IA`
+        description: `${data.generatedImages.length} de ${slides.length} imagens foram criadas com IA`
       });
 
     } catch (error: any) {
@@ -153,10 +154,20 @@ const AIImageGenerator: React.FC<AIImageGeneratorProps> = ({
   };
 
   const handleApplyImages = () => {
+    if (generatedImages.length === 0) {
+      toast({
+        title: "Nenhuma imagem para aplicar",
+        description: "Gere as imagens primeiro",
+        variant: "destructive"
+      });
+      return;
+    }
+
     const imageUrls = generatedImages
       .sort((a, b) => a.slideNumber - b.slideNumber)
       .map(img => img.imageUrl);
     
+    console.log('🖼️ Aplicando imagens aos slides:', imageUrls);
     onImagesApplied(imageUrls);
     
     toast({

@@ -49,40 +49,9 @@ const generatePromptFromContent = (content: string, theme: string, style: string
 };
 
 const generateWithGemini = async (prompt: string): Promise<string> => {
-  const geminiApiKey = Deno.env.get('GOOGLE_GEMINI_API_KEY');
-  if (!geminiApiKey) {
-    throw new Error('Gemini API key not configured');
-  }
-
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent?key=${geminiApiKey}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      contents: [{
-        parts: [{
-          text: `Generate an image with this description: ${prompt}. Make it professional and suitable for business presentations.`
-        }]
-      }],
-      generationConfig: {
-        temperature: 0.7,
-        topK: 40,
-        topP: 0.95,
-        maxOutputTokens: 1024,
-      }
-    })
-  });
-
-  if (!response.ok) {
-    throw new Error(`Gemini API error: ${response.statusText}`);
-  }
-
-  const data = await response.json();
-  
-  // Nota: Gemini Pro Vision atualmente não gera imagens diretamente
-  // Por isso vamos usar o OpenAI como fallback
-  throw new Error('Gemini image generation not available, falling back to OpenAI');
+  // Gemini não tem API de geração de imagens disponível publicamente ainda
+  // Sempre faz fallback para OpenAI
+  throw new Error('Gemini image generation not available, using OpenAI fallback');
 };
 
 const generateWithOpenAI = async (prompt: string): Promise<string> => {
@@ -90,6 +59,8 @@ const generateWithOpenAI = async (prompt: string): Promise<string> => {
   if (!openAIApiKey) {
     throw new Error('OpenAI API key not configured');
   }
+
+  console.log('🎨 Gerando imagem com OpenAI:', prompt);
 
   const response = await fetch('https://api.openai.com/v1/images/generations', {
     method: 'POST',
@@ -99,20 +70,22 @@ const generateWithOpenAI = async (prompt: string): Promise<string> => {
     },
     body: JSON.stringify({
       model: 'dall-e-3',
-      prompt: prompt,
+      prompt: `Professional, clean, modern design: ${prompt}. High quality, business presentation style, minimalist aesthetic.`,
       n: 1,
       size: '1024x1024',
-      quality: 'standard',
+      quality: 'hd',
       response_format: 'url'
     }),
   });
 
   if (!response.ok) {
     const error = await response.json();
+    console.error('❌ OpenAI API error:', error);
     throw new Error(`OpenAI API error: ${error.error?.message || response.statusText}`);
   }
 
   const data = await response.json();
+  console.log('✅ Imagem gerada com sucesso');
   return data.data[0].url;
 };
 
@@ -171,25 +144,13 @@ serve(async (req) => {
         let imageUrl: string;
         let usedProvider: string;
 
-        // Estratégia de provedor
-        if (provider === 'auto' || provider === 'openai') {
-          try {
-            imageUrl = await generateWithOpenAI(prompt);
-            usedProvider = 'openai';
-          } catch (error) {
-            console.log(`OpenAI failed for slide ${slide.slideNumber}, trying Gemini: ${error.message}`);
-            imageUrl = await generateWithGemini(prompt);
-            usedProvider = 'gemini';
-          }
-        } else {
-          try {
-            imageUrl = await generateWithGemini(prompt);
-            usedProvider = 'gemini';
-          } catch (error) {
-            console.log(`Gemini failed for slide ${slide.slideNumber}, trying OpenAI: ${error.message}`);
-            imageUrl = await generateWithOpenAI(prompt);
-            usedProvider = 'openai';
-          }
+        // Priorizar OpenAI (funciona sempre)
+        try {
+          imageUrl = await generateWithOpenAI(prompt);
+          usedProvider = 'openai';
+        } catch (error) {
+          console.error(`❌ Falha ao gerar imagem para slide ${slide.slideNumber}:`, error.message);
+          throw error; // Re-throw para ser capturado no catch externo
         }
 
         // Upload para Supabase Storage
