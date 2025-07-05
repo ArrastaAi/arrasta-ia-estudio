@@ -48,19 +48,17 @@ const generatePromptFromContent = (content: string, theme: string, style: string
   }
 };
 
-const generateWithGemini = async (prompt: string): Promise<string> => {
-  // Gemini não tem API de geração de imagens disponível publicamente ainda
-  // Sempre faz fallback para OpenAI
-  throw new Error('Gemini image generation not available, using OpenAI fallback');
-};
-
 const generateWithOpenAI = async (prompt: string): Promise<string> => {
   const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+  
+  console.log('🔑 Verificando OpenAI API Key...');
   if (!openAIApiKey) {
-    throw new Error('OpenAI API key not configured');
+    console.error('❌ OpenAI API key não configurada no Supabase Secrets');
+    throw new Error('OpenAI API key não configurada. Configure OPENAI_API_KEY nos Secrets do Supabase.');
   }
-
-  console.log('🎨 Gerando imagem com OpenAI:', prompt);
+  
+  console.log('✅ OpenAI API Key encontrada');
+  console.log('🎨 Gerando imagem com OpenAI:', prompt.substring(0, 100) + '...');
 
   const response = await fetch('https://api.openai.com/v1/images/generations', {
     method: 'POST',
@@ -78,14 +76,25 @@ const generateWithOpenAI = async (prompt: string): Promise<string> => {
     }),
   });
 
+  console.log('📡 OpenAI API Response Status:', response.status);
+
   if (!response.ok) {
-    const error = await response.json();
-    console.error('❌ OpenAI API error:', error);
-    throw new Error(`OpenAI API error: ${error.error?.message || response.statusText}`);
+    const errorText = await response.text();
+    console.error('❌ OpenAI API Error:', errorText);
+    
+    let errorMessage = 'Erro na OpenAI API';
+    try {
+      const error = JSON.parse(errorText);
+      errorMessage = `OpenAI API Error: ${error.error?.message || response.statusText}`;
+    } catch {
+      errorMessage = `OpenAI API Error (${response.status}): ${errorText}`;
+    }
+    
+    throw new Error(errorMessage);
   }
 
   const data = await response.json();
-  console.log('✅ Imagem gerada com sucesso');
+  console.log('✅ Imagem gerada com sucesso pela OpenAI');
   return data.data[0].url;
 };
 
@@ -93,15 +102,18 @@ const uploadImageToSupabase = async (imageUrl: string, fileName: string): Promis
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
   
+  console.log('🔗 Fazendo download da imagem gerada...');
   const supabase = createClient(supabaseUrl, supabaseKey);
 
   // Download da imagem
   const imageResponse = await fetch(imageUrl);
   if (!imageResponse.ok) {
-    throw new Error('Failed to download generated image');
+    console.error('❌ Falha ao fazer download da imagem:', imageResponse.status);
+    throw new Error('Falha ao fazer download da imagem gerada');
   }
 
   const imageBuffer = await imageResponse.arrayBuffer();
+  console.log('📤 Fazendo upload para Supabase Storage...');
 
   // Upload para o Supabase Storage
   const { data, error } = await supabase.storage
@@ -112,7 +124,8 @@ const uploadImageToSupabase = async (imageUrl: string, fileName: string): Promis
     });
 
   if (error) {
-    throw new Error(`Storage upload error: ${error.message}`);
+    console.error('❌ Erro no upload para Supabase:', error);
+    throw new Error(`Erro no upload para Supabase: ${error.message}`);
   }
 
   // Retornar URL pública
@@ -120,37 +133,54 @@ const uploadImageToSupabase = async (imageUrl: string, fileName: string): Promis
     .from('carousel-images')
     .getPublicUrl(`ai-generated/${fileName}`);
 
+  console.log('✅ Upload concluído com sucesso:', fileName);
   return publicUrl;
 };
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  console.log('🚀 Edge Function generate-slide-images iniciada');
+  console.log('📝 Method:', req.method);
+  console.log('🌐 Headers:', Object.fromEntries(req.headers.entries()));
 
   try {
     const requestData: SlideImageRequest = await req.json();
     const { slides, theme, style, provider } = requestData;
 
-    console.log(`Generating images for ${slides.length} slides with ${provider} provider`);
+    console.log('📊 Dados da requisição:', {
+      slideCount: slides.length,
+      theme,
+      style,
+      provider
+    });
+
+    if (!slides || slides.length === 0) {
+      throw new Error('Nenhum slide fornecido para geração de imagens');
+    }
 
     const results: GeneratedImage[] = [];
 
     for (const slide of slides) {
       try {
+        console.log(`\n🎯 Processando slide ${slide.slideNumber}...`);
+        
         const prompt = generatePromptFromContent(slide.content, theme, style, slide.slideNumber);
-        console.log(`Generating image for slide ${slide.slideNumber}: ${prompt}`);
+        console.log(`📝 Prompt gerado: ${prompt}`);
 
         let imageUrl: string;
         let usedProvider: string;
 
-        // Priorizar OpenAI (funciona sempre)
+        // Usar OpenAI (agora com API key configurada)
         try {
           imageUrl = await generateWithOpenAI(prompt);
           usedProvider = 'openai';
         } catch (error) {
           console.error(`❌ Falha ao gerar imagem para slide ${slide.slideNumber}:`, error.message);
-          throw error; // Re-throw para ser capturado no catch externo
+          throw error;
         }
 
         // Upload para Supabase Storage
@@ -165,27 +195,35 @@ serve(async (req) => {
           provider: usedProvider
         });
 
-        console.log(`Successfully generated image for slide ${slide.slideNumber} using ${usedProvider}`);
+        console.log(`✅ Slide ${slide.slideNumber} processado com sucesso usando ${usedProvider}`);
 
       } catch (error) {
-        console.error(`Failed to generate image for slide ${slide.slideNumber}:`, error);
+        console.error(`❌ Falha no slide ${slide.slideNumber}:`, error.message);
         // Continue com os outros slides mesmo se um falhar
       }
     }
 
-    return new Response(JSON.stringify({
+    const response = {
       success: true,
       generatedImages: results,
-      message: `Successfully generated ${results.length} out of ${slides.length} images`
-    }), {
+      message: `Geradas ${results.length} de ${slides.length} imagens com sucesso`
+    };
+
+    console.log('🎉 Processo concluído:', response.message);
+    console.log('📈 Resultados:', results.length, 'imagens geradas');
+
+    return new Response(JSON.stringify(response), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('Error in generate-slide-images function:', error);
+    console.error('💥 Erro geral na Edge Function:', error);
+    console.error('🔍 Stack trace:', error.stack);
+    
     return new Response(JSON.stringify({ 
       success: false,
-      error: error.message 
+      error: error.message || 'Erro interno do servidor',
+      details: error.stack
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -109,13 +109,14 @@ const AIImageGenerator: React.FC<AIImageGeneratorProps> = ({
         id: slide.id
       }));
 
-      console.log('Generating images with data:', {
-        slides: slidesData,
+      console.log('🚀 Iniciando geração de imagens:', {
+        slides: slidesData.length,
         theme,
         style: selectedStyle,
         provider: selectedProvider
       });
 
+      console.log('📤 Enviando requisição para Edge Function...');
       const { data, error } = await supabase.functions.invoke('generate-slide-images', {
         body: {
           slides: slidesData,
@@ -125,15 +126,29 @@ const AIImageGenerator: React.FC<AIImageGeneratorProps> = ({
         }
       });
 
+      console.log('📥 Resposta da Edge Function:', { data, error });
+
       if (error) {
-        throw new Error(error.message);
+        console.error('❌ Erro do Supabase Functions:', error);
+        throw new Error(`Erro na chamada da função: ${error.message}`);
+      }
+
+      if (!data) {
+        console.error('❌ Resposta vazia da Edge Function');
+        throw new Error('Resposta vazia da Edge Function');
       }
 
       if (!data.success) {
+        console.error('❌ Edge Function retornou erro:', data.error);
         throw new Error(data.error || 'Falha na geração de imagens');
       }
 
-      console.log('🎉 Imagens geradas com sucesso:', data.generatedImages);
+      if (!data.generatedImages || data.generatedImages.length === 0) {
+        console.error('❌ Nenhuma imagem foi gerada');
+        throw new Error('Nenhuma imagem foi gerada com sucesso');
+      }
+
+      console.log('🎉 Imagens geradas com sucesso:', data.generatedImages.length);
       setGeneratedImages(data.generatedImages);
       
       toast({
@@ -142,10 +157,10 @@ const AIImageGenerator: React.FC<AIImageGeneratorProps> = ({
       });
 
     } catch (error: any) {
-      console.error('Error generating images:', error);
+      console.error('💥 Erro completo na geração:', error);
       toast({
-        title: "Erro na geração",
-        description: error.message || "Não foi possível gerar as imagens",
+        title: "Erro na geração de imagens",
+        description: error.message || "Não foi possível gerar as imagens. Verifique os logs do console.",
         variant: "destructive"
       });
     } finally {
