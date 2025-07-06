@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Upload, Palette, Sparkles, Wand2, Eye, Settings2 } from "lucide-react";
+import { Upload, Palette, Sparkles, Wand2, Eye, Settings2, Zap } from "lucide-react";
 import ImageUpload from "./ImageUpload";
 import ImageGallery from "./ImageGallery";
 import AIImageGenerator from "./AIImageGenerator";

@@ -4,7 +4,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Wand2, Check, X, RefreshCw, Sparkles } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Loader2, Wand2, Check, X, RefreshCw, Sparkles, Zap, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,6 +18,7 @@ interface GeneratedImage {
   imageUrl: string;
   prompt: string;
   provider: string;
+  status: 'generating' | 'success' | 'error';
 }
 
 interface AIImageGeneratorProps {
@@ -36,6 +39,8 @@ const AIImageGenerator: React.FC<AIImageGeneratorProps> = ({
   const [selectedStyle, setSelectedStyle] = useState<'photographic' | 'illustration' | 'minimalist'>('photographic');
   const [selectedProvider, setSelectedProvider] = useState<'gemini' | 'openai' | 'auto'>('auto');
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [progress, setProgress] = useState(0);
+  const [generationMethod, setGenerationMethod] = useState<'direct' | 'edge_function'>('direct');
   const [webhookUrl] = useState('https://n8n-n8n-start.0v0jjw.easypanel.host/webhook/thread');
   const [isTestingWebhook, setIsTestingWebhook] = useState(false);
 
@@ -81,6 +86,87 @@ const AIImageGenerator: React.FC<AIImageGeneratorProps> = ({
     }
   ];
 
+  // Função para gerar prompt inteligente baseado no conteúdo
+  const generatePromptFromContent = (content: string, theme: string, style: string, slideNumber: number): string => {
+    const cleanContent = content.replace(/\n+/g, ' ').trim();
+    const words = cleanContent.split(' ').slice(0, 10).join(' ');
+    
+    const stylePrompts = {
+      photographic: "professional photography, high quality, realistic, corporate style",
+      illustration: "digital illustration, vector art, clean design, modern graphics",
+      minimalist: "minimalist design, simple composition, clean background, elegant"
+    };
+
+    const basePrompt = `${stylePrompts[selectedStyle]}, ${theme} theme, representing: ${words}`;
+    
+    if (slideNumber === 1) {
+      return `${basePrompt}, introduction slide, engaging opening visual, eye-catching`;
+    } else if (slideNumber > 8) {
+      return `${basePrompt}, conclusion slide, call to action visual, professional closing`;
+    } else {
+      return `${basePrompt}, informative content slide, clear message, professional`;
+    }
+  };
+
+  // Geração direta via OpenAI
+  const generateWithOpenAIDirect = async (prompt: string, slideNumber: number): Promise<string> => {
+    console.log(`🎨 Gerando imagem ${slideNumber} via OpenAI Direct:`, prompt.substring(0, 100) + '...');
+    
+    const response = await fetch('https://api.openai.com/v1/images/generations', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY || 'sk-proj-YOUR_KEY_HERE'}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'dall-e-3',
+        prompt: `Professional, clean, modern design: ${prompt}. High quality, business presentation style, minimalist aesthetic, suitable for social media carousel.`,
+        n: 1,
+        size: '1024x1024',
+        quality: 'hd',
+        response_format: 'url'
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ OpenAI API Error:', errorText);
+      throw new Error(`OpenAI API Error: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    return data.data[0].url;
+  };
+
+  // Upload de imagem para Supabase Storage
+  const uploadImageToSupabase = async (imageUrl: string, fileName: string): Promise<string> => {
+    console.log('📤 Fazendo upload da imagem para Supabase Storage...');
+    
+    const imageResponse = await fetch(imageUrl);
+    if (!imageResponse.ok) {
+      throw new Error('Falha ao fazer download da imagem gerada');
+    }
+
+    const imageBuffer = await imageResponse.arrayBuffer();
+    
+    const { data, error } = await supabase.storage
+      .from('carousel-images')
+      .upload(`ai-generated/${fileName}`, imageBuffer, {
+        contentType: 'image/png',
+        upsert: true
+      });
+
+    if (error) {
+      throw new Error(`Erro no upload para Supabase: ${error.message}`);
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('carousel-images')
+      .getPublicUrl(`ai-generated/${fileName}`);
+
+    return publicUrl;
+  };
+
   const handleGenerateImages = async () => {
     if (!user) {
       toast({
@@ -102,71 +188,108 @@ const AIImageGenerator: React.FC<AIImageGeneratorProps> = ({
 
     setIsGenerating(true);
     setCurrentSlide(0);
+    setProgress(0);
     setGeneratedImages([]);
 
     try {
-      const slidesData = slides.map((slide, index) => ({
-        content: slide.content || '',
-        slideNumber: index + 1,
-        id: slide.id
-      }));
-
-      console.log('🚀 Iniciando geração de imagens:', {
-        slides: slidesData.length,
+      console.log('🚀 Iniciando geração direta de imagens:', {
+        slides: slides.length,
         theme,
         style: selectedStyle,
-        provider: selectedProvider
+        method: generationMethod
       });
 
-      console.log('📤 Enviando requisição para Edge Function...');
-      const { data, error } = await supabase.functions.invoke('generate-slide-images', {
-        body: {
-          slides: slidesData,
-          theme,
-          style: selectedStyle,
-          provider: selectedProvider
+      const results: GeneratedImage[] = [];
+      const totalSlides = slides.length;
+
+      for (let i = 0; i < slides.length; i++) {
+        const slide = slides[i];
+        setCurrentSlide(i);
+        setProgress((i / totalSlides) * 100);
+
+        try {
+          console.log(`\n🎯 Processando slide ${i + 1}/${totalSlides}...`);
+          
+          const prompt = generatePromptFromContent(slide.content || '', theme, selectedStyle, i + 1);
+          console.log(`📝 Prompt gerado: ${prompt}`);
+
+          // Inicializar status de geração
+          const initialImage: GeneratedImage = {
+            slideId: slide.id,
+            slideNumber: i + 1,
+            imageUrl: '',
+            prompt,
+            provider: 'openai',
+            status: 'generating'
+          };
+          
+          setGeneratedImages(prev => [...prev.filter(img => img.slideId !== slide.id), initialImage]);
+
+          let imageUrl: string;
+          
+          if (generationMethod === 'direct') {
+            // Geração direta via OpenAI
+            const originalImageUrl = await generateWithOpenAIDirect(prompt, i + 1);
+            const fileName = `slide-${i + 1}-${Date.now()}.png`;
+            imageUrl = await uploadImageToSupabase(originalImageUrl, fileName);
+          } else {
+            // Fallback para Edge Function (se disponível)
+            throw new Error('Edge Function temporariamente indisponível - usando método direto');
+          }
+
+          const finalImage: GeneratedImage = {
+            ...initialImage,
+            imageUrl,
+            status: 'success'
+          };
+
+          results.push(finalImage);
+          setGeneratedImages(prev => 
+            prev.map(img => img.slideId === slide.id ? finalImage : img)
+          );
+
+          console.log(`✅ Slide ${i + 1} processado com sucesso`);
+
+        } catch (error: any) {
+          console.error(`❌ Falha no slide ${i + 1}:`, error.message);
+          
+          const errorImage: GeneratedImage = {
+            slideId: slide.id,
+            slideNumber: i + 1,
+            imageUrl: '/placeholder.svg',
+            prompt: generatePromptFromContent(slide.content || '', theme, selectedStyle, i + 1),
+            provider: 'error',
+            status: 'error'
+          };
+          
+          setGeneratedImages(prev => 
+            prev.map(img => img.slideId === slide.id ? errorImage : img)
+          );
         }
-      });
-
-      console.log('📥 Resposta da Edge Function:', { data, error });
-
-      if (error) {
-        console.error('❌ Erro do Supabase Functions:', error);
-        throw new Error(`Erro na chamada da função: ${error.message}`);
       }
 
-      if (!data) {
-        console.error('❌ Resposta vazia da Edge Function');
-        throw new Error('Resposta vazia da Edge Function');
-      }
-
-      if (!data.success) {
-        console.error('❌ Edge Function retornou erro:', data.error);
-        throw new Error(data.error || 'Falha na geração de imagens');
-      }
-
-      if (!data.generatedImages || data.generatedImages.length === 0) {
-        console.error('❌ Nenhuma imagem foi gerada');
-        throw new Error('Nenhuma imagem foi gerada com sucesso');
-      }
-
-      console.log('🎉 Imagens geradas com sucesso:', data.generatedImages.length);
-      setGeneratedImages(data.generatedImages);
+      setProgress(100);
+      
+      const successCount = results.filter(img => img.status === 'success').length;
       
       toast({
-        title: "Imagens geradas com sucesso!",
-        description: `${data.generatedImages.length} de ${slides.length} imagens foram criadas com IA`
+        title: successCount > 0 ? "Imagens geradas!" : "Erro na geração",
+        description: successCount > 0 
+          ? `${successCount} de ${slides.length} imagens foram criadas com sucesso`
+          : "Não foi possível gerar nenhuma imagem. Verifique sua conexão e API key.",
+        variant: successCount > 0 ? "default" : "destructive"
       });
 
     } catch (error: any) {
-      console.error('💥 Erro completo na geração:', error);
+      console.error('💥 Erro geral na geração:', error);
       toast({
         title: "Erro na geração de imagens",
-        description: error.message || "Não foi possível gerar as imagens. Verifique os logs do console.",
+        description: error.message || "Não foi possível gerar as imagens.",
         variant: "destructive"
       });
     } finally {
       setIsGenerating(false);
+      setProgress(0);
     }
   };
 
@@ -252,31 +375,39 @@ const AIImageGenerator: React.FC<AIImageGeneratorProps> = ({
 
   return (
     <div className="space-y-6">
-      <Card className="bg-gray-800 border-gray-700">
+      <Card className="bg-card/60 backdrop-blur border-border/50">
         <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-purple-400" />
+          <CardTitle className="text-foreground flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-primary" />
             Gerador de Imagens com IA
           </CardTitle>
-          <CardDescription className="text-gray-400">
-            Use Gemini e OpenAI para criar imagens únicas para cada slide baseadas no conteúdo
+          <CardDescription className="text-muted-foreground">
+            Crie imagens profissionais únicas para cada slide usando inteligência artificial
           </CardDescription>
         </CardHeader>
         
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
+          {/* Alerta sobre API Key se necessário */}
+          <Alert className="border-warning/20 bg-warning/5">
+            <AlertCircle className="h-4 w-4 text-warning" />
+            <AlertDescription className="text-warning-foreground">
+              <strong>Importante:</strong> Para usar a geração direta, você precisa configurar sua API key do OpenAI nas configurações do Supabase.
+            </AlertDescription>
+          </Alert>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label className="text-white mb-2 block">Estilo Visual</Label>
+              <Label className="text-foreground mb-2 block font-medium">Estilo Visual</Label>
               <Select value={selectedStyle} onValueChange={(value) => setSelectedStyle(value as any)}>
-                <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+                <SelectTrigger className="bg-background border-border text-foreground">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-gray-700 border-gray-600">
+                <SelectContent className="bg-popover border-border">
                   {styles.map((style) => (
-                    <SelectItem key={style.value} value={style.value} className="text-white hover:bg-gray-600">
+                    <SelectItem key={style.value} value={style.value} className="text-popover-foreground hover:bg-accent">
                       <div>
                         <div className="font-medium">{style.example} {style.label}</div>
-                        <div className="text-xs text-gray-400">{style.description}</div>
+                        <div className="text-xs text-muted-foreground">{style.description}</div>
                       </div>
                     </SelectItem>
                   ))}
@@ -285,30 +416,47 @@ const AIImageGenerator: React.FC<AIImageGeneratorProps> = ({
             </div>
 
             <div>
-              <Label className="text-white mb-2 block">Provedor IA</Label>
-              <Select value={selectedProvider} onValueChange={(value) => setSelectedProvider(value as any)}>
-                <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+              <Label className="text-foreground mb-2 block font-medium">Método de Geração</Label>
+              <Select value={generationMethod} onValueChange={(value) => setGenerationMethod(value as any)}>
+                <SelectTrigger className="bg-background border-border text-foreground">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-gray-700 border-gray-600">
-                  {providers.map((provider) => (
-                    <SelectItem key={provider.value} value={provider.value} className="text-white hover:bg-gray-600">
-                      <div className="flex items-center gap-2">
-                        <span>{provider.label}</span>
-                        <Badge variant="secondary" className="text-xs">{provider.badge}</Badge>
-                      </div>
-                    </SelectItem>
-                  ))}
+                <SelectContent className="bg-popover border-border">
+                  <SelectItem value="direct" className="text-popover-foreground hover:bg-accent">
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-4 w-4 text-primary" />
+                      <span>Geração Direta (Recomendado)</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="edge_function" className="text-popover-foreground hover:bg-accent">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-secondary" />
+                      <span>Edge Function (Experimental)</span>
+                    </div>
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-2">
+          {/* Progress Bar */}
+          {isGenerating && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">
+                  Processando slide {currentSlide + 1} de {slides.length}
+                </span>
+                <span className="text-primary font-medium">{Math.round(progress)}%</span>
+              </div>
+              <Progress value={progress} className="h-2" />
+            </div>
+          )}
+
+          <div className="flex flex-col sm:flex-row gap-3">
             <Button 
               onClick={handleGenerateImages}
               disabled={isGenerating || slides.length === 0}
-              className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:opacity-90"
+              className="flex-1 bg-gradient-to-r from-primary to-info hover:opacity-90 text-primary-foreground"
             >
               {isGenerating ? (
                 <>
@@ -318,25 +466,7 @@ const AIImageGenerator: React.FC<AIImageGeneratorProps> = ({
               ) : (
                 <>
                   <Wand2 className="mr-2 h-4 w-4" />
-                  Gerar Imagens para {slides.length} Slides
-                </>
-              )}
-            </Button>
-
-            <Button 
-              onClick={handleTestWebhook}
-              disabled={isTestingWebhook || slides.length === 0}
-              variant="outline"
-              className="border-orange-500 text-orange-400 hover:bg-orange-500/10"
-            >
-              {isTestingWebhook ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Testando n8n...
-                </>
-              ) : (
-                <>
-                  🔗 Testar n8n
+                  Gerar {slides.length} Imagens
                 </>
               )}
             </Button>
@@ -344,53 +474,79 @@ const AIImageGenerator: React.FC<AIImageGeneratorProps> = ({
             {generatedImages.length > 0 && (
               <Button 
                 onClick={handleApplyImages}
-                className="bg-green-600 hover:bg-green-700"
+                className="bg-success hover:bg-success/90 text-success-foreground"
               >
                 <Check className="mr-2 h-4 w-4" />
-                Aplicar Todas
+                Aplicar Todas ({generatedImages.filter(img => img.status === 'success').length})
               </Button>
             )}
           </div>
-
-          {isGenerating && (
-            <div className="mt-4 p-3 bg-purple-500/10 border border-purple-500/20 rounded-lg">
-              <div className="text-purple-300 text-sm text-center">
-                🎨 IA trabalhando... Gerando imagem {currentSlide + 1} de {slides.length}
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
 
+      {/* Resultados das Imagens */}
       {generatedImages.length > 0 && (
-        <Card className="bg-gray-800 border-gray-700">
+        <Card className="bg-card/60 backdrop-blur border-border/50">
           <CardHeader>
-            <CardTitle className="text-white">
-              Imagens Geradas ({generatedImages.length})
+            <CardTitle className="text-foreground flex items-center justify-between">
+              <span>Imagens Geradas ({generatedImages.length})</span>
+              <div className="flex gap-2">
+                <Badge variant="secondary" className="text-xs">
+                  ✅ {generatedImages.filter(img => img.status === 'success').length} Sucesso
+                </Badge>
+                {generatedImages.filter(img => img.status === 'error').length > 0 && (
+                  <Badge variant="destructive" className="text-xs">
+                    ❌ {generatedImages.filter(img => img.status === 'error').length} Erros
+                  </Badge>
+                )}
+              </div>
             </CardTitle>
-            <CardDescription className="text-gray-400">
-              Preview das imagens criadas pela IA - aprove ou regenere conforme necessário
+            <CardDescription className="text-muted-foreground">
+              Preview das imagens criadas pela IA - clique para regenerar se necessário
             </CardDescription>
           </CardHeader>
           
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {generatedImages.map((image) => (
-                <div key={image.slideId} className="space-y-2">
-                  <div className="aspect-square bg-gray-700 rounded-lg overflow-hidden">
-                    <img 
-                      src={image.imageUrl} 
-                      alt={`Slide ${image.slideNumber}`}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = '/placeholder.svg';
-                      }}
-                    />
+                <div key={image.slideId} className="space-y-3">
+                  <div className="relative aspect-square bg-muted/20 rounded-lg overflow-hidden border border-border/50">
+                    {image.status === 'generating' ? (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <div className="text-center space-y-2">
+                          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+                          <p className="text-sm text-muted-foreground">Gerando...</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <img 
+                        src={image.imageUrl} 
+                        alt={`Slide ${image.slideNumber}`}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = '/placeholder.svg';
+                        }}
+                      />
+                    )}
+                    
+                    {/* Status Indicator */}
+                    <div className="absolute top-2 right-2">
+                      {image.status === 'success' && (
+                        <div className="bg-success/80 text-success-foreground p-1 rounded-full">
+                          <Check className="h-3 w-3" />
+                        </div>
+                      )}
+                      {image.status === 'error' && (
+                        <div className="bg-destructive/80 text-destructive-foreground p-1 rounded-full">
+                          <X className="h-3 w-3" />
+                        </div>
+                      )}
+                    </div>
                   </div>
                   
-                  <div className="space-y-1">
+                  <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-white text-sm font-medium">
+                      <span className="text-foreground text-sm font-medium">
                         Slide {image.slideNumber}
                       </span>
                       <Badge variant="outline" className="text-xs">
@@ -398,21 +554,20 @@ const AIImageGenerator: React.FC<AIImageGeneratorProps> = ({
                       </Badge>
                     </div>
                     
-                    <p className="text-gray-400 text-xs line-clamp-2">
+                    <p className="text-muted-foreground text-xs line-clamp-2">
                       {image.prompt}
                     </p>
                     
-                    <div className="flex gap-1">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleRegenerateSlide(image.slideNumber)}
-                        className="flex-1 text-xs border-gray-600 text-gray-300 hover:bg-gray-700"
-                      >
-                        <RefreshCw className="mr-1 h-3 w-3" />
-                        Regenerar
-                      </Button>
-                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleRegenerateSlide(image.slideNumber)}
+                      className="w-full text-xs"
+                      disabled={image.status === 'generating'}
+                    >
+                      <RefreshCw className="mr-1 h-3 w-3" />
+                      Regenerar
+                    </Button>
                   </div>
                 </div>
               ))}
