@@ -36,6 +36,8 @@ const AIImageGenerator: React.FC<AIImageGeneratorProps> = ({
   const [selectedStyle, setSelectedStyle] = useState<'photographic' | 'illustration' | 'minimalist'>('photographic');
   const [selectedProvider, setSelectedProvider] = useState<'gemini' | 'openai' | 'auto'>('auto');
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [webhookUrl] = useState('https://n8n-n8n-start.0v0jjw.easypanel.host/webhook/thread');
+  const [isTestingWebhook, setIsTestingWebhook] = useState(false);
 
   const styles = [
     { 
@@ -199,6 +201,55 @@ const AIImageGenerator: React.FC<AIImageGeneratorProps> = ({
     });
   };
 
+  const handleTestWebhook = async () => {
+    setIsTestingWebhook(true);
+    
+    try {
+      console.log('🔗 Testando webhook n8n:', webhookUrl);
+      
+      const testData = {
+        action: 'generate_images',
+        slides: slides.map((slide, index) => ({
+          content: slide.content || '',
+          slideNumber: index + 1,
+          id: slide.id
+        })),
+        theme,
+        style: selectedStyle,
+        provider: selectedProvider,
+        timestamp: new Date().toISOString()
+      };
+
+      console.log('📤 Enviando dados para webhook:', testData);
+
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        mode: 'no-cors',
+        body: JSON.stringify(testData)
+      });
+
+      console.log('📥 Resposta do webhook n8n:', response);
+      
+      toast({
+        title: "Webhook testado!",
+        description: "Dados enviados para n8n. Verifique os logs do n8n para ver o resultado.",
+      });
+
+    } catch (error: any) {
+      console.error('❌ Erro ao testar webhook:', error);
+      toast({
+        title: "Erro no webhook",
+        description: error.message || "Não foi possível conectar com o n8n",
+        variant: "destructive"
+      });
+    } finally {
+      setIsTestingWebhook(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Card className="bg-gray-800 border-gray-700">
@@ -268,6 +319,24 @@ const AIImageGenerator: React.FC<AIImageGeneratorProps> = ({
                 <>
                   <Wand2 className="mr-2 h-4 w-4" />
                   Gerar Imagens para {slides.length} Slides
+                </>
+              )}
+            </Button>
+
+            <Button 
+              onClick={handleTestWebhook}
+              disabled={isTestingWebhook || slides.length === 0}
+              variant="outline"
+              className="border-orange-500 text-orange-400 hover:bg-orange-500/10"
+            >
+              {isTestingWebhook ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Testando n8n...
+                </>
+              ) : (
+                <>
+                  🔗 Testar n8n
                 </>
               )}
             </Button>
