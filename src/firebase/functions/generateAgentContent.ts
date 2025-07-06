@@ -40,10 +40,10 @@ async function tryGenerateWithKey(apiKey: string, params: GenerateAgentContentPa
     console.log("Tentando gerar conteúdo com chave:", apiKey ? "AIzaSyAWzGWF_OEP1XAeulDArbJYRu1LUJSqpoQ" : "não fornecida");
 
     if (!apiKey) {
-      throw new Error("Chave da API não fornecida");
+      throw new Error("AIzaSyAWzGWF_OEP1XAeulDArbJYRu1LUJSqpoQ");
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
+    const genAI = new GoogleGenerativeAI(apiKey);AIzaSyAWzGWF_OEP1XAeulDArbJYRu1LUJSqpoQ
     const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
     let systemPrompt = "";
