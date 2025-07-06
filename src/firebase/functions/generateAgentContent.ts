@@ -37,7 +37,7 @@ const FALLBACK_API_KEYS = [
 
 async function tryGenerateWithKey(apiKey: string, params: GenerateAgentContentParams): Promise<GenerateAgentContentResult> {
   try {
-    console.log("Tentando gerar conteúdo com chave:", apiKey ? "***" : "não fornecida");
+    console.log("Tentando gerar conteúdo com chave:", apiKey ? "AIzaSyAWzGWF_OEP1XAeulDArbJYRu1LUJSqpoQ" : "não fornecida");
 
     if (!apiKey) {
       throw new Error("Chave da API não fornecida");
