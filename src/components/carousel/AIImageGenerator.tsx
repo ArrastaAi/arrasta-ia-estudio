@@ -108,34 +108,36 @@ const AIImageGenerator: React.FC<AIImageGeneratorProps> = ({
     }
   };
 
-  // Geração direta via OpenAI
-  const generateWithOpenAIDirect = async (prompt: string, slideNumber: number): Promise<string> => {
-    console.log(`🎨 Gerando imagem ${slideNumber} via OpenAI Direct:`, prompt.substring(0, 100) + '...');
+  // Geração via Edge Function
+  const generateWithEdgeFunction = async (prompt: string, slideNumber: number): Promise<string> => {
+    console.log(`🎨 Gerando imagem ${slideNumber} via Edge Function:`, prompt.substring(0, 100) + '...');
     
-    const response = await fetch('https://api.openai.com/v1/images/generations', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY || 'sk-proj-YOUR_KEY_HERE'}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'dall-e-3',
-        prompt: `Professional, clean, modern design: ${prompt}. High quality, business presentation style, minimalist aesthetic, suitable for social media carousel.`,
-        n: 1,
-        size: '1024x1024',
-        quality: 'hd',
-        response_format: 'url'
-      }),
+    const requestData = {
+      slides: [{
+        content: prompt,
+        slideNumber: slideNumber,
+        id: `slide-${slideNumber}`
+      }],
+      theme,
+      style: selectedStyle as 'photographic' | 'illustration' | 'minimalist',
+      provider: 'openai' as const
+    };
+
+    const { data, error } = await supabase.functions.invoke('generate-slide-images', {
+      body: requestData
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ OpenAI API Error:', errorText);
-      throw new Error(`OpenAI API Error: ${response.status} - ${errorText}`);
+    if (error) {
+      console.error('❌ Erro na Edge Function:', error);
+      throw new Error(`Edge Function Error: ${error.message}`);
     }
 
-    const data = await response.json();
-    return data.data[0].url;
+    if (!data?.success || !data?.generatedImages?.[0]) {
+      console.error('❌ Edge Function falhou:', data?.error);
+      throw new Error(data?.error || 'Falha na geração de imagens');
+    }
+
+    return data.generatedImages[0].imageUrl;
   };
 
   // Upload de imagem para Supabase Storage
@@ -228,13 +230,11 @@ const AIImageGenerator: React.FC<AIImageGeneratorProps> = ({
           let imageUrl: string;
           
           if (generationMethod === 'direct') {
-            // Geração direta via OpenAI
-            const originalImageUrl = await generateWithOpenAIDirect(prompt, i + 1);
-            const fileName = `slide-${i + 1}-${Date.now()}.png`;
-            imageUrl = await uploadImageToSupabase(originalImageUrl, fileName);
+            // Geração via Edge Function
+            imageUrl = await generateWithEdgeFunction(prompt, i + 1);
           } else {
-            // Fallback para Edge Function (se disponível)
-            throw new Error('Edge Function temporariamente indisponível - usando método direto');
+            // Fallback para Edge Function
+            imageUrl = await generateWithEdgeFunction(prompt, i + 1);
           }
 
           const finalImage: GeneratedImage = {

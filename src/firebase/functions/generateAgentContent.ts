@@ -37,13 +37,13 @@ const FALLBACK_API_KEYS = [
 
 async function tryGenerateWithKey(apiKey: string, params: GenerateAgentContentParams): Promise<GenerateAgentContentResult> {
   try {
-    console.log("Tentando gerar conteúdo com chave:", apiKey ? "AIzaSyAWzGWF_OEP1XAeulDArbJYRu1LUJSqpoQ" : "não fornecida");
+    console.log("Tentando gerar conteúdo com chave:", apiKey ? "***" : "não fornecida");
 
     if (!apiKey) {
-      throw new Error("AIzaSyAWzGWF_OEP1XAeulDArbJYRu1LUJSqpoQ");
+      throw new Error("API key não fornecida");
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);AIzaSyAWzGWF_OEP1XAeulDArbJYRu1LUJSqpoQ
+    const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
     let systemPrompt = "";
